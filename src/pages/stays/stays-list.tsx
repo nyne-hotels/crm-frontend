@@ -1,8 +1,9 @@
 import { ChevronLeftIcon, ChevronRightIcon, FileUpIcon, PlusIcon, SearchIcon, XIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import {
   CountryFilter,
+  FieldsFilter,
   FilterGroup,
   FilterMultiSelect,
   FilterSelect,
@@ -16,9 +17,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { useFilterParams } from '@/hooks/use-filter-params'
 import { useMe } from '@/hooks/use-me'
 import { useCompanyOptions, useOccasionOptions, usePropertyOptions } from '@/hooks/use-reference-data'
-import { STAY_MORE_FILTERS, useQuickCounts, useStays, type StayFilter } from '@/hooks/use-stays'
+import { STAY_CLASHES, STAY_MORE_FILTERS, useQuickCounts, useStays, type StayFilter } from '@/hooks/use-stays'
 import { useStayPanel } from '@/hooks/use-stay-panel'
 import { filterFields, optionsFrom, pickParams } from '@/lib/filters'
 import { formatCount, formatDate, fullName, plural } from '@/lib/format'
@@ -71,7 +73,7 @@ function readFilter(params: URLSearchParams): StayFilter {
 export function StaysPage() {
   const { data: me } = useMe()
   const canEdit = can(me?.permissions, 'stays', 'edit')
-  const [params, setParams] = useSearchParams()
+  const { params, update } = useFilterParams(STAY_CLASHES)
   const filter = readFilter(params)
   const { data, isPending, isError, isPlaceholderData } = useStays(filter)
   const { data: counts } = useQuickCounts()
@@ -81,21 +83,6 @@ export function StaysPage() {
   const { open } = useStayPanel()
   const [adding, setAdding] = useState(false)
 
-  // Any change other than paging (or opening a stay) goes back to page 1.
-  function update(changes: Record<string, string | undefined>) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        for (const [key, value] of Object.entries(changes)) {
-          if (value) next.set(key, value)
-          else next.delete(key)
-        }
-        if (!('page' in changes)) next.delete('page')
-        return next
-      },
-      { replace: true },
-    )
-  }
 
   const [search, setSearch] = useState(filter.q ?? '')
   const q = useDebouncedValue(search.trim(), 250)
@@ -362,6 +349,26 @@ function StayMoreFilters({
   const sort = params.has('sort') ? `${params.get('sort')}-${params.get('order') ?? 'desc'}` : undefined
   return (
     <>
+      <FilterGroup title="Filled in or missing">
+        <FieldsFilter
+          options={[
+            { value: 'arrival', label: 'Arrival date' },
+            { value: 'departure', label: 'Departure date' },
+            { value: 'bookingReference', label: 'Booking reference' },
+            { value: 'roomType', label: 'Room type' },
+            { value: 'guests', label: 'Number of guests' },
+            { value: 'revenue', label: 'Room revenue' },
+            { value: 'agent', label: 'Agent (for agent and OTA bookings)' },
+            { value: 'remarks', label: 'Special requests (booking remarks)' },
+            { value: 'guestName', label: "Guest's name" },
+            { value: 'guestEmail', label: "Guest's email" },
+            { value: 'guestPhone', label: "Guest's phone" },
+          ]}
+          params={params}
+          update={update}
+        />
+      </FilterGroup>
+
       <FilterGroup title="Dates and length">
         <RangeFilter label="Departure" type="date" {...f.range('departureFrom', 'departureTo')} />
         <RangeFilter label="Nights" type="number" min={0} {...f.range('nightsMin', 'nightsMax')} />
@@ -371,7 +378,6 @@ function StayMoreFilters({
         <RangeFilter label="Guests" type="number" min={0} hint="Adults and children together" {...f.range('guestsMin', 'guestsMax')} />
         <YesNoSelect label="Children" yes="Travelling with children" no="No children" {...f.choice('children')} />
         <TextFilter label="Room type" placeholder="e.g. Deluxe" {...f.choice('roomType')} />
-        <YesNoSelect label="Special requests" yes="Has booking remarks" no="No booking remarks" {...f.choice('remarks')} />
       </FilterGroup>
 
       <FilterGroup title="Revenue">

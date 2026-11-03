@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useGuestStays } from '@/hooks/use-stays'
 import { api, queryString } from '@/lib/api'
+import { is, missing, type Clash } from '@/lib/filter-clashes'
 import type { PreferenceCategory, PreferenceKind, SpecialDateOccasion } from '@/lib/knowledge'
 import type { Note, Preference, SpecialDate, UpcomingOccasions } from '@/lib/types'
 
@@ -129,7 +130,20 @@ export function useSpecialDateMutations(guestId: number) {
 
 // ---------- Guests → Upcoming occasions ----------
 // The "More filters" panel, kept in the address under the API's own names.
-export const UPCOMING_MORE_FILTERS = ['within', 'nextStay', 'stage', 'milestone', 'yearKnown'] as const
+export const UPCOMING_MORE_FILTERS = [
+  'within',
+  'nextStay',
+  'stage',
+  'milestone',
+  'filled',
+  'filledMatch',
+  'missing',
+  'missingMatch',
+] as const
+
+// Filters that can't be combined; the one just chosen wins (see filter-clashes.ts).
+// A round number needs the year.
+export const UPCOMING_CLASHES: Clash[] = [{ a: is('milestone', 'yes', 'Round number'), b: missing('year', 'Year') }]
 
 export interface UpcomingFilter extends Partial<Record<(typeof UPCOMING_MORE_FILTERS)[number], string>> {
   // filters that can have several values are sent as 'a,b'

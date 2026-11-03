@@ -1,12 +1,19 @@
 import { PlusIcon, SearchIcon, XIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { CountryFilter, FilterGroup, FilterSelect, MoreFilters, YesNoSelect } from '@/components/more-filters'
+import {
+  CountryFilter,
+  FieldsFilter,
+  FilterGroup,
+  FilterSelect,
+  MoreFilters,
+  YesNoSelect,
+} from '@/components/more-filters'
 import { MultiSelect } from '@/components/multi-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { COMPANY_MORE_FILTERS, useCompanies } from '@/hooks/use-companies'
+import { COMPANY_CLASHES, COMPANY_MORE_FILTERS, useCompanies } from '@/hooks/use-companies'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useFilterParams } from '@/hooks/use-filter-params'
 import { useLeadOwners } from '@/hooks/use-leads'
@@ -31,7 +38,7 @@ export function CompaniesPage() {
   const navigate = useNavigate()
   const { data: me } = useMe()
   const canEdit = can(me?.permissions, 'leads', 'edit')
-  const { params, update } = useFilterParams()
+  const { params, update } = useFilterParams(COMPANY_CLASHES)
   const { data: owners = [] } = useLeadOwners()
   const filter = {
     q: params.get('q') ?? undefined,
@@ -184,6 +191,19 @@ function CompanyMoreFilters({
   const f = filterFields(params, update)
   return (
     <>
+      <FilterGroup title="Filled in or missing">
+        <FieldsFilter
+          options={[
+            { value: 'country', label: 'Country' },
+            { value: 'address', label: 'Address' },
+            { value: 'website', label: 'Website' },
+            { value: 'commissionNotes', label: 'Commission notes' },
+          ]}
+          params={params}
+          update={update}
+        />
+      </FilterGroup>
+
       <FilterGroup title="Where">
         <CountryFilter label="Country" {...f.multi('country')} />
       </FilterGroup>

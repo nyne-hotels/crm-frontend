@@ -11,6 +11,7 @@ export type Area =
   | 'feedback'
   | 'employees' // the employee list and what guests said about named employees
   | 'marketingExport'
+  | 'campaigns' // campaigns and their public forms
   | 'mergeGuests'
   | 'settings'
 

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consentKey } from '@/hooks/use-consent'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { api, queryString } from '@/lib/api'
+import { filled, including, is, missing, neverStayed, set, without, type Clash, type ClashSide } from '@/lib/filter-clashes'
 import type { ContactMethodKind, ContactMethodStatus, ContactType, Market } from '@/lib/guests'
 import { formatPhone } from '@/lib/phone'
 import type { Guest, GuestList, GuestMatch } from '@/lib/types'
@@ -18,11 +19,7 @@ export const GUEST_MORE_FILTERS = [
   'whatsappConsent',
   'doNotContact',
   'canEmail',
-  'hasEmail',
-  'hasPhone',
-  'hasWhatsapp',
   'emailStatus',
-  'vip',
   'staysMin',
   'staysMax',
   'lastStayFrom',
@@ -33,9 +30,34 @@ export const GUEST_MORE_FILTERS = [
   'openLead',
   'feedback',
   'birthdayMonth',
-  'specialDates',
-  'preferences',
+  'filled',
+  'filledMatch',
+  'missing',
+  'missingMatch',
 ] as const
+
+// Filters that can't be combined; the one just chosen wins (see filter-clashes.ts).
+const notNone: ClashSide = { key: 'feedback', label: 'Feedback given', is: (v) => v !== 'none' }
+const onEmailList = is('canEmail', 'yes', 'On the marketing email list')
+export const GUEST_CLASHES: Clash[] = [
+  { a: onEmailList, b: is('doNotContact', 'yes', 'Marked do not contact') },
+  { a: onEmailList, b: without('emailConsent', ['opted_in'], 'Email marketing') },
+  { a: onEmailList, b: missing('email', 'Email') },
+  { a: set('emailStatus', 'Primary email status'), b: missing('email', 'Email') },
+  { a: filled('whatsapp', 'WhatsApp number'), b: missing('phone', 'Phone') },
+  { a: set('country', 'Country'), b: missing('country', 'Country') },
+  { a: set('company', 'Company'), b: missing('company', 'Company') },
+  { a: set('tag', 'Tag'), b: missing('tags', 'Tags') },
+  { a: set('birthdayMonth', 'Birthday in'), b: missing('birthday', 'Birthday') },
+  { a: set('birthdayMonth', 'Birthday in'), b: missing('specialDates', 'Special dates') },
+  { a: filled('birthday', 'Birthday'), b: missing('specialDates', 'Special dates') },
+  { a: missing('name', 'Name'), b: filled('firstName', 'First name') },
+  { a: missing('name', 'Name'), b: filled('lastName', 'Last name') },
+  { a: neverStayed, b: set(['lastStayFrom', 'lastStayTo'], 'Last stay') },
+  { a: neverStayed, b: set('hotel', 'Hotel stayed at') },
+  { a: neverStayed, b: notNone },
+  { a: neverStayed, b: including('stage', ['stayed', 'repeat_guest'], 'Stage: stayed or repeat guest') },
+]
 
 export interface GuestFilter extends Partial<Record<(typeof GUEST_MORE_FILTERS)[number], string>> {
   q?: string

@@ -1,13 +1,22 @@
 import { ChevronLeftIcon, ChevronRightIcon, DownloadIcon, MailCheckIcon, XIcon } from 'lucide-react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { toast } from 'sonner'
-import { FilterGroup, FilterMultiSelect, MoreFilters, RangeFilter, YesNoSelect } from '@/components/more-filters'
+import {
+  FieldsFilter,
+  FilterGroup,
+  FilterMultiSelect,
+  MoreFilters,
+  RangeFilter,
+  YesNoSelect,
+} from '@/components/more-filters'
 import { CountryMultiSelect, MultiSelect } from '@/components/multi-select'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useFilterParams } from '@/hooks/use-filter-params'
 import {
+  EMAIL_LIST_CLASHES,
   EMAIL_LIST_MORE_FILTERS,
   useEmailList,
   useExportHistory,
@@ -33,7 +42,6 @@ import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { StageChip } from '../guests/guest-badges'
 
-const ANY = 'any'
 const FILTER_KEYS = ['market', 'country', 'hotel', 'stage', 'from', 'to', 'tag', ...EMAIL_LIST_MORE_FILTERS] as const
 
 // Filters and page live in the address, so Back from a profile returns to the same list.
@@ -57,7 +65,7 @@ function readFilter(params: URLSearchParams): EmailListFilter & { page: number }
 export function EmailListPage() {
   const { data: me } = useMe()
   const navigate = useNavigate()
-  const [params, setParams] = useSearchParams()
+  const { params, update } = useFilterParams(EMAIL_LIST_CLASHES)
   const { page, ...filter } = readFilter(params)
   const { data, isPending, isError, isPlaceholderData } = useEmailList({ ...filter, page })
   const { data: hotels = [] } = usePropertyOptions()
@@ -66,21 +74,6 @@ export function EmailListPage() {
   const hasFilters = FILTER_KEYS.some((k) => params.has(k))
   const f = filterFields(params, update)
 
-  // Any change other than paging goes back to page 1.
-  function update(changes: Record<string, string | undefined>) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        for (const [key, value] of Object.entries(changes)) {
-          if (value && value !== ANY) next.set(key, value)
-          else next.delete(key)
-        }
-        if (!('page' in changes)) next.delete('page')
-        return next
-      },
-      { replace: true },
-    )
-  }
 
   async function download() {
     try {
@@ -344,6 +337,19 @@ function EmailListMoreFilters({
   const f = filterFields(params, update)
   return (
     <>
+      <FilterGroup title="Filled in or missing">
+        <FieldsFilter
+          options={[
+            { value: 'firstName', label: 'First name' },
+            { value: 'lastName', label: 'Last name' },
+            { value: 'country', label: 'Country' },
+            { value: 'birthday', label: 'Birthday' },
+          ]}
+          params={params}
+          update={update}
+        />
+      </FilterGroup>
+
       <FilterGroup title="Who">
         <FilterMultiSelect
           label="Type"

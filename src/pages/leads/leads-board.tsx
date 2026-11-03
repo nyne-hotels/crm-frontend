@@ -16,7 +16,7 @@ import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useFilterParams } from '@/hooks/use-filter-params'
-import { LEAD_MORE_FILTERS, useLeadBoard, useLeadMutations } from '@/hooks/use-leads'
+import { LEAD_CLASHES, LEAD_MORE_FILTERS, useLeadBoard, useLeadMutations } from '@/hooks/use-leads'
 import { useMe } from '@/hooks/use-me'
 import { errorMessage } from '@/lib/api'
 import { pickParams } from '@/lib/filters'
@@ -43,7 +43,7 @@ const COLUMN_ACCENTS: Record<LeadStatus, string> = {
 export function LeadsBoardPage() {
   const { data: me } = useMe()
   const canEdit = can(me?.permissions, 'leads', 'edit')
-  const { params, update } = useFilterParams()
+  const { params, update } = useFilterParams(LEAD_CLASHES)
   const filter = {
     q: params.get('q') ?? undefined,
     owner: params.get('owner') ?? undefined,
@@ -169,7 +169,7 @@ function DraggableCard({ lead, today, canEdit }: { lead: LeadCard; today: string
   )
 }
 
-// The person, hotel, dates, owner, follow-up date (red when overdue) and source.
+// The person, hotel, dates, campaign, owner, follow-up date (red when overdue) and source.
 function CardBody({ lead, today, lifted }: { lead: LeadCard; today: string; lifted?: boolean }) {
   const name = fullName(lead) || `Lead #${lead.id}`
   const dates = requestedDates(lead.checkIn, lead.checkOut)
@@ -191,6 +191,7 @@ function CardBody({ lead, today, lifted }: { lead: LeadCard; today: string; lift
           {[lead.hotel ?? 'Hotel not decided', dates].filter(Boolean).join(' · ')}
         </p>
       )}
+      {lead.campaign && <p className="truncate text-xs text-muted-foreground">{lead.campaign.name}</p>}
       {lead.status === 'booked' && (
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
           {lead.stay ? (

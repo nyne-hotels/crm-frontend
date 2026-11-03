@@ -27,6 +27,7 @@ import { LeadDetailPage } from '@/pages/leads/lead-detail'
 import { LeadsBoardPage } from '@/pages/leads/leads-board'
 import { LeadsLayout } from '@/pages/leads/leads-layout'
 import { LeadsListPage } from '@/pages/leads/leads-list'
+import { CampaignsPage } from '@/pages/marketing/campaigns'
 import { EmailListPage } from '@/pages/marketing/email-list'
 import { EmailUploadsPage } from '@/pages/marketing/email-uploads'
 import { MarketingLayout } from '@/pages/marketing/marketing-layout'
@@ -233,6 +234,14 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="email-list" replace /> },
           { path: 'email-list', element: <EmailListPage /> },
+          {
+            path: 'campaigns',
+            element: (
+              <RequireAccess area="campaigns">
+                <CampaignsPage />
+              </RequireAccess>
+            ),
+          },
           {
             path: 'uploads',
             element: (

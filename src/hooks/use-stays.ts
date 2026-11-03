@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { NewGuestInput } from '@/hooks/use-guests'
 import { api, queryString } from '@/lib/api'
+import { is, missing, set, without, type Clash } from '@/lib/filter-clashes'
 import type { QuickView, StayChannel, StayStatus } from '@/lib/stays'
 import type {
   GuestStays,
@@ -34,13 +35,42 @@ export const STAY_MORE_FILTERS = [
   'currency',
   'revenueMin',
   'revenueMax',
-  'remarks',
   'feedback',
   'fromLead',
   'guestStage',
   'market',
   'country',
+  'filled',
+  'filledMatch',
+  'missing',
+  'missingMatch',
 ] as const
+
+// Filters that can't be combined; the one just chosen wins (see filter-clashes.ts).
+// A quick view sets its own status and dates.
+const view = set('view', 'Quick filter')
+const arrival = set(['from', 'to'], 'Arrival dates')
+const departure = set(['departureFrom', 'departureTo'], 'Departure dates')
+const noAgent = missing('agent', 'Agent')
+export const STAY_CLASHES: Clash[] = [
+  { a: view, b: set('status', 'Status') },
+  { a: view, b: arrival },
+  { a: view, b: departure },
+  { a: view, b: missing('arrival', 'Arrival date') },
+  { a: view, b: missing('departure', 'Departure date') },
+  { a: arrival, b: missing('arrival', 'Arrival date') },
+  { a: departure, b: missing('departure', 'Departure date') },
+  { a: set(['nightsMin', 'nightsMax'], 'Nights'), b: missing('arrival', 'Arrival date') },
+  { a: set(['nightsMin', 'nightsMax'], 'Nights'), b: missing('departure', 'Departure date') },
+  { a: set(['guestsMin', 'guestsMax'], 'Guests'), b: missing('guests', 'Number of guests') },
+  { a: is('children', 'yes', 'Travelling with children'), b: missing('guests', 'Number of guests') },
+  { a: set('roomType', 'Room type'), b: missing('roomType', 'Room type') },
+  { a: set(['revenueMin', 'revenueMax'], 'Room revenue'), b: missing('revenue', 'Room revenue') },
+  { a: set('agent', 'Agent'), b: noAgent },
+  { a: without('channel', ['travel_agent', 'ota'], 'Channel'), b: noAgent },
+  // only checked-out stays have feedback
+  { a: { key: 'feedback', label: 'Feedback', is: (v) => v !== 'none' }, b: without('status', ['checked_out'], 'Status') },
+]
 
 export interface StayFilter extends Partial<Record<(typeof STAY_MORE_FILTERS)[number], string>> {
   q?: string

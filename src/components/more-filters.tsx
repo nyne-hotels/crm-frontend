@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { countFilters, isBackwards } from '@/lib/filters'
+import { countFilters, filterFields, isBackwards } from '@/lib/filters'
 
 // "Any" in a drop-down; not 'any', which some filters use as a value ("works for any company")
 const ANY = '__any__'
@@ -301,6 +301,78 @@ export function FilterMultiSelect({
     <div className="grid gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       <MultiSelect id={id} values={values} onChange={onChange} options={options} anyLabel={anyLabel} className="w-full" />
+    </div>
+  )
+}
+
+// "Filled in" and "Missing": the fields that have a value, and the ones left
+// empty. A field ticked in one isn't offered in the other. With two or more
+// ticked, the rows can match any of them (the default) or all of them.
+export function FieldsFilter({
+  options,
+  params,
+  update,
+}: {
+  options: readonly MultiSelectOption[]
+  params: URLSearchParams
+  update: Update
+}) {
+  const f = filterFields(params, update)
+  const filled = f.multi('filled')
+  const missing = f.multi('missing')
+  return (
+    <>
+      <FieldList
+        label="Filled in"
+        anyLabel="Anything"
+        options={options.filter((o) => !missing.values.includes(o.value))}
+        list={filled}
+        match={f.choice('filledMatch')}
+        words={['Any of these filled in', 'All of these filled in']}
+      />
+      <FieldList
+        label="Missing"
+        anyLabel="Nothing in particular"
+        options={options.filter((o) => !filled.values.includes(o.value))}
+        list={missing}
+        match={f.choice('missingMatch')}
+        words={['Missing any of these', 'Missing all of these']}
+      />
+    </>
+  )
+}
+
+function FieldList({
+  label,
+  anyLabel,
+  options,
+  list,
+  match,
+  words,
+}: {
+  label: string
+  anyLabel: string
+  options: readonly MultiSelectOption[]
+  list: { values: string[]; onChange: (values: string[]) => void }
+  match: { value: string | undefined; onChange: (value: string | undefined) => void }
+  words: [string, string]
+}) {
+  const id = useId()
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <MultiSelect id={id} {...list} options={options} anyLabel={anyLabel} className="w-full" />
+      {list.values.length > 1 && (
+        <Select value={match.value ?? 'any'} onValueChange={(v) => match.onChange(v === 'any' ? undefined : v)}>
+          <SelectTrigger className="w-full" aria-label={`${label}: any or all of these`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">{words[0]}</SelectItem>
+            <SelectItem value="all">{words[1]}</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
     </div>
   )
 }

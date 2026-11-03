@@ -8,7 +8,15 @@ const EMPLOYEES = ['employees']
 const detailKey = (id: number) => [...EMPLOYEES, 'detail', id]
 
 // The "More filters" panel, kept in the address under the API's own names.
-export const EMPLOYEE_MORE_FILTERS = ['login', 'recent', 'lastMentionedFrom', 'lastMentionedTo'] as const
+export const EMPLOYEE_MORE_FILTERS = [
+  'recent',
+  'lastMentionedFrom',
+  'lastMentionedTo',
+  'filled',
+  'filledMatch',
+  'missing',
+  'missingMatch',
+] as const
 
 export interface EmployeeFilter extends Partial<Record<(typeof EMPLOYEE_MORE_FILTERS)[number], string>> {
   q?: string

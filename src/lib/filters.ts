@@ -1,8 +1,9 @@
 // Filters that live in the address, shared by the lists' "More filters" panels.
 type Update = (changes: Record<string, string | undefined>) => void
 
-// A range's two ends count as one filter: arrivalFrom + arrivalTo, staysMin + staysMax.
-const filterName = (key: string) => key.replace(/(From|To|Min|Max)$/, '')
+// A range's two ends count as one filter: arrivalFrom + arrivalTo, staysMin + staysMax;
+// so do "Missing" and whether any or all of it must be missing (missingMatch).
+const filterName = (key: string) => key.replace(/(From|To|Min|Max|Match)$/, '')
 
 export function countFilters(params: URLSearchParams, keys: readonly string[]) {
   return new Set(keys.filter((k) => params.has(k)).map(filterName)).size

@@ -148,6 +148,14 @@ function Header({ lead, canEdit }: { lead: Lead; canEdit: boolean }) {
         <LeadStatusChip status={lead.status} />
         <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
           <SourceIcon source={lead.source} /> {SOURCE_LABELS[lead.source]}
+          {lead.campaign && (
+            <>
+              {': '}
+              <Link to={`/leads/list?campaignId=${lead.campaign.id}`} className="hover:underline">
+                {lead.campaign.name}
+              </Link>
+            </>
+          )}
         </span>
       </div>
       {canEdit && (

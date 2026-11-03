@@ -2,6 +2,7 @@ import { SearchIcon, XIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   CountryFilter,
+  FieldsFilter,
   FilterGroup,
   FilterMultiSelect,
   MoreFilters,
@@ -11,6 +12,7 @@ import {
 import { MultiSelect } from '@/components/multi-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useCampaigns } from '@/hooks/use-campaigns'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { LEAD_MORE_FILTERS, useLeadOwners } from '@/hooks/use-leads'
 import { useMe } from '@/hooks/use-me'
@@ -18,7 +20,7 @@ import { useOccasionOptions, usePropertyOptions } from '@/hooks/use-reference-da
 import { filterFields, optionsFrom } from '@/lib/filters'
 import { fullName } from '@/lib/format'
 import { MARKET_LABELS, MARKETS } from '@/lib/guests'
-import { LEAD_SOURCES, LOST_REASON_LABELS, LOST_REASONS, SOURCE_LABELS } from '@/lib/leads'
+import { ALL_LEAD_SOURCES, LOST_REASON_LABELS, LOST_REASONS, SOURCE_LABELS } from '@/lib/leads'
 import { can } from '@/lib/permissions'
 import { COMMON_CURRENCIES } from '@/lib/stays'
 
@@ -88,7 +90,7 @@ export function LeadFilterBar({
         />
         <MultiSelect
           {...f.multi('source')}
-          options={optionsFrom(LEAD_SOURCES, SOURCE_LABELS)}
+          options={optionsFrom(ALL_LEAD_SOURCES, SOURCE_LABELS)}
           anyLabel="Any source"
           className="w-40"
           aria-label="Filter by source"
@@ -118,9 +120,27 @@ function LeadMoreFilters({
   lostReason: boolean
 }) {
   const { data: occasions = [] } = useOccasionOptions()
+  const { data: campaigns = [] } = useCampaigns()
   const f = filterFields(params, update)
   return (
     <>
+      <FilterGroup title="Filled in or missing">
+        <FieldsFilter
+          options={[
+            { value: 'hotel', label: 'Hotel' },
+            { value: 'checkIn', label: 'Check-in date' },
+            { value: 'checkOut', label: 'Check-out date' },
+            { value: 'party', label: 'Number of guests' },
+            { value: 'occasion', label: 'Occasion' },
+            { value: 'personName', label: "Person's name" },
+            { value: 'personEmail', label: "Person's email" },
+            { value: 'personPhone', label: "Person's phone" },
+          ]}
+          params={params}
+          update={update}
+        />
+      </FilterGroup>
+
       <FilterGroup title="The request">
         <RangeFilter label="Check-in asked for" type="date" {...f.range('checkInFrom', 'checkInTo')} />
         <FilterMultiSelect
@@ -130,6 +150,12 @@ function LeadMoreFilters({
           {...f.multi('occasionId')}
         />
         <RangeFilter label="Came in" type="date" {...f.range('createdFrom', 'createdTo')} />
+        <FilterMultiSelect
+          label="Campaign"
+          options={campaigns.map((c) => ({ value: String(c.id), label: c.name }))}
+          anyLabel="Any campaign"
+          {...f.multi('campaignId')}
+        />
       </FilterGroup>
 
       <FilterGroup title="Quote">

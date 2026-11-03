@@ -1,7 +1,7 @@
 import { FileUpIcon, PlusIcon, SearchIcon, XIcon } from 'lucide-react'
 import { Fragment, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { FilterGroup, FilterSelect, MoreFilters, RangeFilter, YesNoSelect } from '@/components/more-filters'
+import { FieldsFilter, FilterGroup, FilterSelect, MoreFilters, RangeFilter } from '@/components/more-filters'
 import { MultiSelect } from '@/components/multi-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -211,6 +211,18 @@ function EmployeeMoreFilters({
   const f = filterFields(params, update)
   return (
     <>
+      <FilterGroup title="Filled in or missing">
+        <FieldsFilter
+          options={[
+            { value: 'lastName', label: 'Last name' },
+            { value: 'jobTitle', label: 'Job title' },
+            { value: 'login', label: 'CRM login' },
+          ]}
+          params={params}
+          update={update}
+        />
+      </FilterGroup>
+
       <FilterGroup title="Guest feedback">
         <FilterSelect
           label="In the last 90 days"
@@ -223,10 +235,6 @@ function EmployeeMoreFilters({
           {...f.choice('recent')}
         />
         <RangeFilter label="Last mentioned" type="date" {...f.range('lastMentionedFrom', 'lastMentionedTo')} />
-      </FilterGroup>
-
-      <FilterGroup title="CRM">
-        <YesNoSelect label="CRM login" yes="Linked to a login" no="No login" {...f.choice('login')} />
       </FilterGroup>
     </>
   )

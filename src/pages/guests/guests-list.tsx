@@ -1,13 +1,22 @@
 import { ArrowDownIcon, ArrowUpIcon, CakeIcon, CopyIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, SearchIcon, XIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
-import { FilterGroup, FilterMultiSelect, FilterSelect, MoreFilters, RangeFilter, YesNoSelect } from '@/components/more-filters'
+import { Link, useNavigate } from 'react-router'
+import {
+  FieldsFilter,
+  FilterGroup,
+  FilterMultiSelect,
+  FilterSelect,
+  MoreFilters,
+  RangeFilter,
+  YesNoSelect,
+} from '@/components/more-filters'
 import { CountryMultiSelect, MultiSelect } from '@/components/multi-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { GUEST_MORE_FILTERS, useGuests, type GuestFilter } from '@/hooks/use-guests'
+import { useFilterParams } from '@/hooks/use-filter-params'
+import { GUEST_CLASHES, GUEST_MORE_FILTERS, useGuests, type GuestFilter } from '@/hooks/use-guests'
 import { useMe } from '@/hooks/use-me'
 import { useCompanyOptions, usePropertyOptions, useTagOptions } from '@/hooks/use-reference-data'
 import { CONSENT_STATUS_LABELS, CONSENT_STATUSES } from '@/lib/consent'
@@ -53,7 +62,7 @@ function readFilter(params: URLSearchParams): GuestFilter {
 export function GuestsPage() {
   const { data: me } = useMe()
   const navigate = useNavigate()
-  const [params, setParams] = useSearchParams()
+  const { params, update } = useFilterParams(GUEST_CLASHES)
   const filter = readFilter(params)
   const { data, isPending, isError, isPlaceholderData } = useGuests(filter)
   const { data: hotels = [] } = usePropertyOptions()
@@ -61,21 +70,6 @@ export function GuestsPage() {
   const { data: companies = [] } = useCompanyOptions()
   const [adding, setAdding] = useState(false)
 
-  // Any change other than paging goes back to page 1.
-  function update(changes: Record<string, string | undefined>) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        for (const [key, value] of Object.entries(changes)) {
-          if (value) next.set(key, value)
-          else next.delete(key)
-        }
-        if (!('page' in changes)) next.delete('page')
-        return next
-      },
-      { replace: true },
-    )
-  }
 
   // results update as the user types, once they pause
   const [search, setSearch] = useState(filter.q ?? '')
@@ -338,6 +332,29 @@ function GuestMoreFilters({
   const consentOptions = optionsFrom(CONSENT_STATUSES, CONSENT_STATUS_LABELS)
   return (
     <>
+      <FilterGroup title="Filled in or missing">
+        <FieldsFilter
+          options={[
+            { value: 'name', label: 'Name (first or last)' },
+            { value: 'firstName', label: 'First name' },
+            { value: 'lastName', label: 'Last name' },
+            { value: 'email', label: 'Email' },
+            { value: 'phone', label: 'Phone' },
+            { value: 'whatsapp', label: 'WhatsApp number' },
+            { value: 'country', label: 'Country' },
+            { value: 'company', label: 'Company' },
+            { value: 'jobTitle', label: 'Job title' },
+            { value: 'vipReason', label: 'VIP / industry reason' },
+            { value: 'birthday', label: 'Birthday' },
+            { value: 'specialDates', label: 'Special dates (birthday, anniversary …)' },
+            { value: 'preferences', label: 'Likes and dislikes' },
+            { value: 'tags', label: 'Tags' },
+          ]}
+          params={params}
+          update={update}
+        />
+      </FilterGroup>
+
       <FilterGroup title="Consent">
         <FilterMultiSelect label="Email marketing" options={consentOptions} {...f.multi('emailConsent')} />
         <FilterMultiSelect label="WhatsApp marketing" options={consentOptions} {...f.multi('whatsappConsent')} />
@@ -346,22 +363,15 @@ function GuestMoreFilters({
       </FilterGroup>
 
       <FilterGroup title="Contact details">
-        <YesNoSelect label="Email" yes="Has an email" no="No email" {...f.choice('hasEmail')} />
         <FilterMultiSelect
           label="Primary email status"
           options={optionsFrom(CONTACT_METHOD_STATUSES, STATUS_LABELS.email)}
           {...f.multi('emailStatus')}
         />
-        <YesNoSelect label="Phone" yes="Has a phone" no="No phone" {...f.choice('hasPhone')} />
-        <YesNoSelect label="WhatsApp" yes="Has a WhatsApp number" no="No WhatsApp number known" {...f.choice('hasWhatsapp')} />
         <FilterMultiSelect
           label="Company"
-          options={[
-            { value: 'any', label: 'Works for a company' },
-            { value: 'none', label: 'No company' },
-            ...companies.map((c) => ({ value: String(c.id), label: c.name })),
-          ]}
-          anyLabel="Any or none"
+          options={companies.map((c) => ({ value: String(c.id), label: c.name }))}
+          anyLabel="Any company"
           {...f.multi('company')}
         />
       </FilterGroup>
@@ -383,7 +393,6 @@ function GuestMoreFilters({
 
       <FilterGroup title="Sales">
         <YesNoSelect label="Open lead" yes="Has an open lead" no="No open lead" {...f.choice('openLead')} />
-        <YesNoSelect label="VIP / industry" yes="Has a VIP reason" no="No VIP reason" {...f.choice('vip')} />
       </FilterGroup>
 
       <FilterGroup title="What we know">
@@ -393,8 +402,6 @@ function GuestMoreFilters({
           anyLabel="Any month"
           {...f.multi('birthdayMonth')}
         />
-        <YesNoSelect label="Special dates" yes="Has a birthday or anniversary on file" no="None on file" {...f.choice('specialDates')} />
-        <YesNoSelect label="Likes and dislikes" yes="Some noted" no="None noted" {...f.choice('preferences')} />
         <RangeFilter label="Added to the CRM" type="date" {...f.range('addedFrom', 'addedTo')} />
       </FilterGroup>
     </>

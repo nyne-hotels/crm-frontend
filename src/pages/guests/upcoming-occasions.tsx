@@ -1,12 +1,20 @@
 import { ArrowLeftIcon, MailCheckIcon, XIcon } from 'lucide-react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
-import { FilterGroup, FilterMultiSelect, FilterSelect, MoreFilters, YesNoSelect } from '@/components/more-filters'
+import { Link, useNavigate } from 'react-router'
+import {
+  FieldsFilter,
+  FilterGroup,
+  FilterMultiSelect,
+  FilterSelect,
+  MoreFilters,
+  YesNoSelect,
+} from '@/components/more-filters'
 import { MultiSelect } from '@/components/multi-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { UPCOMING_MORE_FILTERS, useUpcomingOccasions, type UpcomingFilter } from '@/hooks/use-knowledge'
+import { useFilterParams } from '@/hooks/use-filter-params'
+import { UPCOMING_CLASHES, UPCOMING_MORE_FILTERS, useUpcomingOccasions, type UpcomingFilter } from '@/hooks/use-knowledge'
 import { usePropertyOptions } from '@/hooks/use-reference-data'
 import { CONSENT_STATUS_LABELS } from '@/lib/consent'
 import { filterFields, optionsFrom, pickParams } from '@/lib/filters'
@@ -39,26 +47,13 @@ function readFilter(params: URLSearchParams): UpcomingFilter {
 // days, soonest first, so each hotel can plan a cake or an offer.
 export function UpcomingOccasionsPage() {
   const navigate = useNavigate()
-  const [params, setParams] = useSearchParams()
+  const { params, update } = useFilterParams(UPCOMING_CLASHES)
   const filter = readFilter(params)
   const { data, isPending, isError, isPlaceholderData } = useUpcomingOccasions(filter)
   const { data: hotels = [] } = usePropertyOptions()
   const hasFilters = FILTER_KEYS.some((k) => params.has(k))
   const f = filterFields(params, update)
 
-  function update(changes: Record<string, string | undefined>) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        for (const [key, value] of Object.entries(changes)) {
-          if (value && value !== ANY) next.set(key, value)
-          else next.delete(key)
-        }
-        return next
-      },
-      { replace: true },
-    )
-  }
 
   return (
     <div className="mx-auto grid max-w-7xl gap-4">
@@ -92,7 +87,7 @@ export function UpcomingOccasionsPage() {
           className="w-56"
           aria-label="Filter by hotel of next or last stay"
         />
-        <Select value={filter.canEmail ?? ANY} onValueChange={(v) => update({ email: v })}>
+        <Select value={filter.canEmail ?? ANY} onValueChange={(v) => update({ email: v === ANY ? undefined : v })}>
           <SelectTrigger className="w-44" aria-label="Filter by whether they can be emailed">
             <SelectValue />
           </SelectTrigger>
@@ -221,6 +216,19 @@ function UpcomingMoreFilters({
   const f = filterFields(params, update)
   return (
     <>
+      <FilterGroup title="Filled in or missing">
+        <FieldsFilter
+          options={[
+            { value: 'label', label: 'Whose birthday, or what the occasion is' },
+            { value: 'year', label: 'Year (for the age or years married)' },
+            { value: 'guestEmail', label: "Guest's email" },
+            { value: 'guestPhone', label: "Guest's phone" },
+          ]}
+          params={params}
+          update={update}
+        />
+      </FilterGroup>
+
       <FilterGroup title="When">
         <FilterSelect
           label="Coming up within"
@@ -236,7 +244,6 @@ function UpcomingMoreFilters({
       </FilterGroup>
 
       <FilterGroup title="The occasion">
-        <YesNoSelect label="Year known" yes="Age or years married known" no="Year not known" {...f.choice('yearKnown')} />
         <YesNoSelect label="Round number" yes="A 5th, 10th, 40th …" no="Not a round number" {...f.choice('milestone')} />
       </FilterGroup>
 

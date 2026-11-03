@@ -3,11 +3,12 @@ import { useMe } from '@/hooks/use-me'
 import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 
-// Marketing → Email list, and Upload unsubscribes or bounces for those who record consent.
+// Marketing → Email list, Campaigns, and Upload unsubscribes or bounces for those who record consent.
 export function MarketingLayout() {
   const { data: me } = useMe()
   const tabs = [
     { label: 'Email list', to: '/marketing/email-list' },
+    ...(can(me?.permissions, 'campaigns') ? [{ label: 'Campaigns', to: '/marketing/campaigns' }] : []),
     ...(can(me?.permissions, 'guestConsent', 'edit')
       ? [{ label: 'Upload unsubscribes or bounces', to: '/marketing/uploads' }]
       : []),

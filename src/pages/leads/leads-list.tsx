@@ -5,7 +5,7 @@ import { MultiSelect } from '@/components/multi-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SHARED_LEAD_FILTERS, useFilterParams } from '@/hooks/use-filter-params'
-import { LEAD_MORE_FILTERS, useLeads, type LeadFilter } from '@/hooks/use-leads'
+import { LEAD_LIST_CLASHES, LEAD_MORE_FILTERS, useLeads, type LeadFilter } from '@/hooks/use-leads'
 import { listOf, pickParams } from '@/lib/filters'
 import { formatCount, formatDate, fullName, plural } from '@/lib/format'
 import {
@@ -44,7 +44,7 @@ function readFilter(params: URLSearchParams): LeadFilter {
 // first when filtered by follow-up), with filters in the address.
 export function LeadsListPage() {
   const navigate = useNavigate()
-  const { params, update } = useFilterParams()
+  const { params, update } = useFilterParams(LEAD_LIST_CLASHES)
   const filter = readFilter(params)
   const { data, isPending, isError, isPlaceholderData } = useLeads(filter)
   const select = (key: string) => (value: string) => update({ [key]: value === ANY ? undefined : value })
@@ -139,6 +139,7 @@ export function LeadsListPage() {
                     <span className="inline-flex items-center gap-1.5">
                       <SourceIcon source={lead.source} /> {SOURCE_LABELS[lead.source]}
                     </span>
+                    {lead.campaign && <div className="mt-0.5 max-w-40 truncate text-xs text-muted-foreground">{lead.campaign.name}</div>}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{lead.hotel ?? <span className="text-muted-foreground">Not decided</span>}</TableCell>
                   <TableCell className="whitespace-nowrap tabular-nums">{requestedDates(lead.checkIn, lead.checkOut)}</TableCell>

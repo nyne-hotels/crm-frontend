@@ -1,13 +1,21 @@
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon, XIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { FilterGroup, FilterMultiSelect, FilterSelect, MoreFilters, RangeFilter, YesNoSelect } from '@/components/more-filters'
+import {
+  FieldsFilter,
+  FilterGroup,
+  FilterMultiSelect,
+  FilterSelect,
+  MoreFilters,
+  RangeFilter,
+  YesNoSelect,
+} from '@/components/more-filters'
 import { MultiSelect } from '@/components/multi-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { FEEDBACK_MORE_FILTERS, useFeedbackList, type FeedbackFilter } from '@/hooks/use-feedback'
+import { FEEDBACK_CLASHES, FEEDBACK_MORE_FILTERS, useFeedbackList, type FeedbackFilter } from '@/hooks/use-feedback'
 import { useFilterParams } from '@/hooks/use-filter-params'
 import { useMe } from '@/hooks/use-me'
 import { usePropertyOptions } from '@/hooks/use-reference-data'
@@ -44,7 +52,7 @@ export function FeedbackInboxPage() {
   const navigate = useNavigate()
   const { data: me } = useMe()
   const showMentions = can(me?.permissions, 'employees')
-  const { params, update } = useFilterParams()
+  const { params, update } = useFilterParams(FEEDBACK_CLASHES)
   const filter = readFilter(params)
   const { data, isPending, isError, isPlaceholderData } = useFeedbackList(filter)
   const { data: hotels = [] } = usePropertyOptions()
@@ -114,7 +122,11 @@ export function FeedbackInboxPage() {
         />
         <MultiSelect
           {...f.multi('rating')}
-          options={[5, 4, 3, 2, 1].map((n) => ({ value: String(n), label: `${n} ${n === 1 ? 'star' : 'stars'}` }))}
+          // Needs follow-up is ratings of 1 or 2, so only those can be picked there
+          options={(filter.tab === 'needs_follow_up' ? [2, 1] : [5, 4, 3, 2, 1]).map((n) => ({
+            value: String(n),
+            label: `${n} ${n === 1 ? 'star' : 'stars'}`,
+          }))}
           anyLabel="Any rating"
           className="w-36"
           aria-label="Filter by rating"
@@ -288,11 +300,24 @@ function FeedbackMoreFilters({
   const f = filterFields(params, update)
   return (
     <>
-      <FilterGroup title="The response">
-        <RangeFilter label="Stars" type="number" min={1} max={5} {...f.range('ratingMin', 'ratingMax')} />
-        <YesNoSelect label="Rating" yes="Has a star rating" no="Review only, no rating" {...f.choice('rated')} />
-        <YesNoSelect label="Written review" yes="Has comments" no="Rating only, no comments" {...f.choice('review')} />
-        {showMentions && (
+      <FilterGroup title="Filled in or missing">
+        <FieldsFilter
+          options={[
+            { value: 'rating', label: 'Star rating' },
+            { value: 'review', label: 'Written review' },
+            { value: 'bookingReference', label: 'Booking reference' },
+            { value: 'stayDates', label: 'Stay dates' },
+            { value: 'guestName', label: "Guest's name" },
+            { value: 'guestEmail', label: "Guest's email" },
+            { value: 'guestPhone', label: "Guest's phone" },
+          ]}
+          params={params}
+          update={update}
+        />
+      </FilterGroup>
+
+      {showMentions && (
+        <FilterGroup title="The response">
           <FilterSelect
             label="Employees mentioned"
             options={[
@@ -303,8 +328,8 @@ function FeedbackMoreFilters({
             ]}
             {...f.choice('mentions')}
           />
-        )}
-      </FilterGroup>
+        </FilterGroup>
+      )}
 
       <FilterGroup title="Follow-up">
         <YesNoSelect label="Guest contacted" yes="A call or message logged" no="Nothing logged" {...f.choice('contacted')} />

@@ -63,7 +63,8 @@ function EditForm({ lead, onClose }: { lead: Lead; onClose: () => void }) {
     try {
       await update.mutateAsync({
         id: lead.id,
-        source,
+        // a campaign lead keeps its source
+        ...(lead.source === 'campaign' ? {} : { source }),
         propertyId: propertyId === NONE ? null : propertyId,
         checkIn: checkIn || null,
         checkOut: checkOut || null,
@@ -87,18 +88,24 @@ function EditForm({ lead, onClose }: { lead: Lead; onClose: () => void }) {
       <FormError message={error} />
       <div className="grid items-start gap-4 sm:grid-cols-2">
         <Field label="Source" htmlFor="edit-source">
-          <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
-            <SelectTrigger id="edit-source" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LEAD_SOURCES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {SOURCE_LABELS[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {lead.source === 'campaign' ? (
+            <p id="edit-source" className="flex h-9 items-center text-sm text-muted-foreground">
+              Campaign{lead.campaign && `: ${lead.campaign.name}`}
+            </p>
+          ) : (
+            <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
+              <SelectTrigger id="edit-source" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LEAD_SOURCES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {SOURCE_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </Field>
         <Field label="Hotel" htmlFor="edit-hotel">
           <Select value={propertyId} onValueChange={setPropertyId}>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { api, queryString } from '@/lib/api'
+import { including, is, missing, set, type Clash } from '@/lib/filter-clashes'
 import type { FeedbackTab, Sentiment } from '@/lib/feedback'
 import type {
   Feedback,
@@ -21,17 +22,27 @@ const timelineKey = (id: number) => [...FEEDBACK, 'timeline', id]
 
 // The inbox's "More filters" panel, kept in the address under the API's own names.
 export const FEEDBACK_MORE_FILTERS = [
-  'ratingMin',
-  'ratingMax',
-  'rated',
-  'review',
   'mentions',
   'contacted',
   'stayFrom',
   'stayTo',
   'channel',
   'market',
+  'filled',
+  'filledMatch',
+  'missing',
+  'missingMatch',
 ] as const
+
+// Filters that can't be combined; the one just chosen wins (see filter-clashes.ts).
+// Needs follow-up is ratings of 1 or 2, so it offers only those stars.
+const needsFollowUp = is('tab', 'needs_follow_up', 'Needs follow-up')
+export const FEEDBACK_CLASHES: Clash[] = [
+  { a: needsFollowUp, b: including('rating', ['3', '4', '5'], '3 to 5 stars') },
+  { a: needsFollowUp, b: missing('rating', 'Rating') },
+  { a: set('rating', 'Star rating'), b: missing('rating', 'Rating') },
+  { a: set(['stayFrom', 'stayTo'], 'Checked out'), b: missing('stayDates', 'Stay dates') },
+]
 
 export interface FeedbackFilter extends Partial<Record<(typeof FEEDBACK_MORE_FILTERS)[number], string>> {
   q?: string

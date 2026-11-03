@@ -35,6 +35,7 @@ export const CONSENT_SOURCES = [
   'email_unsubscribe',
   'do_not_contact',
   'contact_import',
+  'campaign_form',
   'other',
 ] as const
 export type ConsentSource = (typeof CONSENT_SOURCES)[number]
@@ -49,11 +50,12 @@ export const CONSENT_SOURCE_LABELS: Record<ConsentSource, string> = {
   email_unsubscribe: 'Email unsubscribe',
   do_not_contact: 'Do not contact request',
   contact_import: 'Contact import',
+  campaign_form: 'Campaign form',
   other: 'Other',
 }
 
-// What staff can pick in the Change dialog; 'do_not_contact' is set by the database
-// and 'contact_import' by Settings → Import contacts.
+// What staff can pick in the Change dialog; 'do_not_contact' is set by the database,
+// 'contact_import' by Settings → Import contacts and 'campaign_form' by a campaign's form.
 export const CHOICE_SOURCES: ConsentSource[] = [
   'check_in_form',
   'booking_form',

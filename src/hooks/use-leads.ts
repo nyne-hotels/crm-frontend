@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { NewGuestInput } from '@/hooks/use-guests'
 import { api, queryString } from '@/lib/api'
+import { is, missing, set, without, type Clash } from '@/lib/filter-clashes'
 import type { FollowUpFilter, InteractionDirection, InteractionKind, LeadSource, LeadStatus, LostReason } from '@/lib/leads'
 import type { InteractionItem, Lead, LeadBoard, LeadCards, LeadList, StaffOption, TimelineItem } from '@/lib/types'
 
@@ -13,6 +14,7 @@ const timelineKey = (id: number) => [...LEADS, 'timeline', id]
 // The "More filters" panel, kept in the address under the API's own names.
 // The board and the list share them; the lost reason is the list's alone.
 export const LEAD_MORE_FILTERS = [
+  'campaignId',
   'occasionId',
   'checkInFrom',
   'checkInTo',
@@ -25,7 +27,33 @@ export const LEAD_MORE_FILTERS = [
   'stayToLink',
   'market',
   'country',
+  'filled',
+  'filledMatch',
+  'missing',
+  'missingMatch',
 ] as const
+
+// Filters that can't be combined; the one just chosen wins (see filter-clashes.ts).
+export const LEAD_CLASHES: Clash[] = [
+  { a: set('hotel', 'Hotel'), b: missing('hotel', 'Hotel') },
+  { a: set('occasionId', 'Occasion'), b: missing('occasion', 'Occasion') },
+  { a: set(['checkInFrom', 'checkInTo'], 'Check-in asked for'), b: missing('checkIn', 'Check-in date') },
+]
+
+// The list's status, follow-up and lost reason: only open leads have a
+// follow-up, only lost ones a reason, only booked ones a stay to link.
+const lost = set('lostReason', 'Lost because')
+const due = set('due', 'Follow-up')
+const toLink = is('stayToLink', 'yes', 'Stay to link')
+export const LEAD_LIST_CLASHES: Clash[] = [
+  ...LEAD_CLASHES,
+  { a: without('status', ['lost'], 'Status'), b: lost },
+  { a: without('status', ['open', 'new', 'contacted', 'quoted'], 'Status'), b: due },
+  { a: without('status', ['booked'], 'Status'), b: toLink },
+  { a: lost, b: due },
+  { a: lost, b: toLink },
+  { a: due, b: toLink },
+]
 
 export interface LeadFilter extends Partial<Record<(typeof LEAD_MORE_FILTERS)[number], string>> {
   q?: string

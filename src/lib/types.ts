@@ -92,6 +92,23 @@ export interface Tag {
   lastUpdated: LastUpdated
 }
 
+// ---------- campaigns ----------
+// Marketing → Campaigns. Each has a public form at `link`; every form sent
+// becomes a lead for the owner.
+export interface Campaign {
+  id: number
+  name: string
+  slug: string // the form's address; made from the name once and never changed
+  link: string
+  isActive: boolean // false = closed: the form says the campaign has ended
+  owner: { id: number; name: string; isActive: boolean } // isActive false = they've left
+  leads: number
+  open: number
+  booked: number
+  createdAt: string
+  lastUpdated: LastUpdated
+}
+
 export interface TagOption {
   id: number
   name: string
@@ -607,6 +624,7 @@ export interface LeadCard {
   id: number
   status: LeadStatus
   source: LeadSource
+  campaign: { id: number; name: string } | null // the campaign whose form they sent (source 'campaign')
   contactId: number
   firstName: string | null
   lastName: string | null

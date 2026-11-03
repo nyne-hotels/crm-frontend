@@ -89,6 +89,7 @@ function LeadLine({ lead, today }: { lead: LeadCard; today: string }) {
           <span className="truncate text-sm font-medium">{details}</span>
           <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
             <span>Enquired {formatDate(lead.createdAt)}</span>
+            {lead.campaign && <span>· {lead.campaign.name}</span>}
             {lead.owner && <span>· {lead.owner.name}</span>}
             {lead.status === 'lost' && lead.lostReason && <span>· {LOST_REASON_LABELS[lead.lostReason]}</span>}
             {lead.status === 'booked' && !lead.stay && <span className="font-medium text-amber-700 dark:text-amber-400">· Stay to link</span>}

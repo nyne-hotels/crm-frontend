@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { NewGuestInput } from '@/hooks/use-guests'
 import { api, queryString } from '@/lib/api'
+import { is, missing, set, type Clash } from '@/lib/filter-clashes'
 import type { CompanyStatus, CompanyType } from '@/lib/leads'
 import type { Company, CompanyPerson, CompanyRow, CompanyStays, TimelineItem } from '@/lib/types'
 
@@ -11,7 +12,23 @@ const peopleKey = (id: number) => [...COMPANIES, 'people', id]
 const timelineKey = (id: number) => [...COMPANIES, 'timeline', id]
 
 // The "More filters" panel, kept in the address under the API's own names.
-export const COMPANY_MORE_FILTERS = ['country', 'people', 'bookedLastYear', 'lastContact', 'openLeads'] as const
+export const COMPANY_MORE_FILTERS = [
+  'country',
+  'people',
+  'bookedLastYear',
+  'lastContact',
+  'openLeads',
+  'filled',
+  'filledMatch',
+  'missing',
+  'missingMatch',
+] as const
+
+// Filters that can't be combined; the one just chosen wins (see filter-clashes.ts).
+export const COMPANY_CLASHES: Clash[] = [
+  { a: set('country', 'Country'), b: missing('country', 'Country') },
+  { a: is('people', 'no', 'No people yet'), b: is('openLeads', 'yes', 'Its people have open leads') },
+]
 
 export interface CompanyFilter extends Partial<Record<(typeof COMPANY_MORE_FILTERS)[number], string>> {
   q?: string

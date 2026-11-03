@@ -6,6 +6,7 @@ import {
   GlobeIcon,
   HandshakeIcon,
   MailIcon,
+  MegaphoneIcon,
   MessageCircleIcon,
   MoreHorizontalIcon,
   PhoneIcon,
@@ -53,6 +54,8 @@ export const needsDetails = (lead: { status: LeadStatus; quotedValue: number | n
   to === 'lost' || to === 'booked' || (to === 'quoted' && lead.quotedValue == null) || (!isOpen(lead.status) && isOpen(to))
 
 // ---------- sources ----------
+// The sources staff pick. 'campaign' is set only by a campaign's public form,
+// with the campaign, so it isn't offered when adding or editing a lead.
 export const LEAD_SOURCES = [
   'website_form',
   'whatsapp',
@@ -64,7 +67,10 @@ export const LEAD_SOURCES = [
   'ota_message',
   'other',
 ] as const
-export type LeadSource = (typeof LEAD_SOURCES)[number]
+export type LeadSource = (typeof LEAD_SOURCES)[number] | 'campaign'
+
+// every source, for filtering
+export const ALL_LEAD_SOURCES: LeadSource[] = [...LEAD_SOURCES.slice(0, -1), 'campaign', 'other']
 
 export const SOURCE_LABELS: Record<LeadSource, string> = {
   website_form: 'Website form',
@@ -75,6 +81,7 @@ export const SOURCE_LABELS: Record<LeadSource, string> = {
   agent: 'Agent',
   walk_in: 'Walk-in',
   ota_message: 'OTA message',
+  campaign: 'Campaign',
   other: 'Other',
 }
 
@@ -87,6 +94,7 @@ export const SOURCE_ICONS: Record<LeadSource, LucideIcon> = {
   agent: HandshakeIcon,
   walk_in: FootprintsIcon,
   ota_message: StoreIcon,
+  campaign: MegaphoneIcon,
   other: MoreHorizontalIcon,
 }
 

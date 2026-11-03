@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, queryString } from '@/lib/api'
+import { including, is, missing, neverStayed, set, type Clash } from '@/lib/filter-clashes'
 import type { EmailList, EmailListExport, ExportHistoryRow, UploadKind, UploadPreview, UploadResult } from '@/lib/types'
 
 // Marketing → Email list and Upload unsubscribes or bounces (Module 5).
@@ -21,7 +22,22 @@ export const EMAIL_LIST_MORE_FILTERS = [
   'addedTo',
   'upcomingStay',
   'lowRating',
+  'filled',
+  'filledMatch',
+  'missing',
+  'missingMatch',
 ] as const
+
+// Filters that can't be combined; the one just chosen wins (see filter-clashes.ts).
+export const EMAIL_LIST_CLASHES: Clash[] = [
+  { a: set('country', 'Country'), b: missing('country', 'Country') },
+  { a: set('birthdayMonth', 'Birthday in'), b: missing('birthday', 'Birthday') },
+  { a: neverStayed, b: set(['from', 'to'], 'Last stay') },
+  { a: neverStayed, b: set('hotel', 'Hotel stayed at') },
+  { a: neverStayed, b: set('lastHotelId', 'Last stayed at') },
+  { a: neverStayed, b: is('lowRating', 'yes', 'Gave a 1 or 2 star rating') },
+  { a: neverStayed, b: including('stage', ['stayed', 'repeat_guest'], 'Stage: stayed or repeat guest') },
+]
 
 export interface EmailListFilter extends Partial<Record<(typeof EMAIL_LIST_MORE_FILTERS)[number], string>> {
   // filters that can have several values are sent as 'a,b'
