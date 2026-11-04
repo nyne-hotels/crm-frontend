@@ -21,7 +21,7 @@ export function useCampaignMutations() {
       onSuccess,
     }),
     update: useMutation({
-      mutationFn: ({ id, ...input }: { id: number; name?: string; ownerId?: number; isActive?: boolean }) =>
+      mutationFn: ({ id, ...input }: { id: number; name?: string; slug?: string; ownerId?: number; isActive?: boolean }) =>
         api<Campaign>(`/campaigns/${id}`, { method: 'PATCH', body: input }),
       onSuccess,
     }),

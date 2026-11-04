@@ -58,8 +58,12 @@ function CampaignRow({ campaign, owners, canEdit }: { campaign: Campaign; owners
   const { update } = useCampaignMutations()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(campaign.name)
+  const [editingLink, setEditingLink] = useState(false)
+  const [slug, setSlug] = useState(campaign.slug)
+  // the campaign site's address, in front of the slug
+  const linkBase = campaign.link.slice(0, campaign.link.length - campaign.slug.length)
 
-  async function save(input: { name?: string; ownerId?: number; isActive?: boolean }, message: string) {
+  async function save(input: { name?: string; slug?: string; ownerId?: number; isActive?: boolean }, message: string) {
     try {
       await update.mutateAsync({ id: campaign.id, ...input })
       toast.success(message)
@@ -79,6 +83,21 @@ function CampaignRow({ campaign, owners, canEdit }: { campaign: Campaign; owners
       return
     }
     if (await save({ name: trimmed }, 'Campaign renamed; its link stays the same')) setEditing(false)
+  }
+
+  async function changeLink(e: FormEvent) {
+    e.preventDefault()
+    const trimmed = slug.trim().toLowerCase()
+    if (!trimmed || trimmed === campaign.slug) {
+      cancelLink()
+      return
+    }
+    if (await save({ slug: trimmed }, 'Link changed. Use the new one in campaign emails.')) setEditingLink(false)
+  }
+
+  function cancelLink() {
+    setSlug(campaign.slug)
+    setEditingLink(false)
   }
 
   async function copyLink() {
@@ -147,24 +166,67 @@ function CampaignRow({ campaign, owners, canEdit }: { campaign: Campaign; owners
               )}
             </div>
           )}
-          <div className="mt-1 flex min-w-0 items-center gap-1">
-            <a
-              href={campaign.link}
-              target="_blank"
-              rel="noreferrer"
-              className="truncate text-sm text-muted-foreground underline-offset-4 hover:underline"
-            >
-              {campaign.link}
-            </a>
-            <Button size="icon" variant="ghost" className="size-7 shrink-0" onClick={copyLink} aria-label="Copy the form's link">
-              <CopyIcon className="size-3.5" />
-            </Button>
-            <Button asChild size="icon" variant="ghost" className="size-7 shrink-0">
-              <a href={campaign.link} target="_blank" rel="noreferrer" aria-label="Open the form">
-                <ExternalLinkIcon className="size-3.5" />
+          {editingLink ? (
+            <form onSubmit={changeLink} className="mt-1 grid gap-1">
+              <div className="flex min-w-0 items-center gap-1">
+                <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">{linkBase}</span>
+                <Input
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  autoFocus
+                  maxLength={60}
+                  className="h-8 max-w-xs"
+                  aria-label="The form's link"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') cancelLink()
+                  }}
+                />
+                <Button type="submit" size="icon" variant="ghost" aria-label="Save" disabled={update.isPending}>
+                  <CheckIcon />
+                </Button>
+                <Button type="button" size="icon" variant="ghost" aria-label="Cancel" onClick={cancelLink}>
+                  <XIcon />
+                </Button>
+              </div>
+              <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <TriangleAlertIcon className="size-3.5 shrink-0" />
+                Links already sent in emails stop working. Use letters, numbers and dashes.
+              </p>
+            </form>
+          ) : (
+            <div className="mt-1 flex min-w-0 items-center gap-1">
+              <a
+                href={campaign.link}
+                target="_blank"
+                rel="noreferrer"
+                className="truncate text-sm text-muted-foreground underline-offset-4 hover:underline"
+              >
+                {campaign.link}
               </a>
-            </Button>
-          </div>
+              {canEdit && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-7 shrink-0"
+                  onClick={() => {
+                    setSlug(campaign.slug)
+                    setEditingLink(true)
+                  }}
+                  aria-label="Change the form's link"
+                >
+                  <PencilIcon className="size-3.5" />
+                </Button>
+              )}
+              <Button size="icon" variant="ghost" className="size-7 shrink-0" onClick={copyLink} aria-label="Copy the form's link">
+                <CopyIcon className="size-3.5" />
+              </Button>
+              <Button asChild size="icon" variant="ghost" className="size-7 shrink-0">
+                <a href={campaign.link} target="_blank" rel="noreferrer" aria-label="Open the form">
+                  <ExternalLinkIcon className="size-3.5" />
+                </a>
+              </Button>
+            </div>
+          )}
         </div>
         {canEdit && (
           <label className="flex items-center gap-2 pt-1 text-sm">
@@ -246,7 +308,7 @@ export function CampaignsPage() {
       <p className="text-sm text-muted-foreground">
         Put a campaign's link on the button in its email. Each form sent becomes a lead on the Leads board for the
         campaign's owner, due for follow-up that day, and guests who tick the box are opted in to marketing emails.
-        Closing a campaign stops its form; renaming it keeps the same link.
+        Closing a campaign stops its form; renaming it keeps the same link. Changing the link breaks links already sent.
       </p>
       {canEdit && (
         <form onSubmit={add} className="flex flex-wrap gap-2">

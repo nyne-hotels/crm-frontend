@@ -98,7 +98,7 @@ export interface Tag {
 export interface Campaign {
   id: number
   name: string
-  slug: string // the form's address; made from the name once and never changed
+  slug: string // the form's address; made from the name once, kept on rename, can be changed by hand
   link: string
   isActive: boolean // false = closed: the form says the campaign has ended
   owner: { id: number; name: string; isActive: boolean } // isActive false = they've left
