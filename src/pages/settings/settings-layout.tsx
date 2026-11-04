@@ -8,6 +8,7 @@ const TABS = [
   { label: 'Tags', to: '/settings/tags' },
   { label: 'Merge history', to: '/settings/merges' },
   { label: 'Import contacts', to: '/settings/contact-imports' },
+  { label: 'Deleted items', to: '/settings/deleted-items' },
 ]
 
 export function SettingsLayout() {

@@ -1,4 +1,4 @@
-import { DownloadIcon, FileSpreadsheetIcon, MailMinusIcon, MailWarningIcon, UploadIcon, type LucideIcon } from 'lucide-react'
+import { DownloadIcon, FileSpreadsheetIcon, InfoIcon, MailMinusIcon, MailWarningIcon, UploadIcon, type LucideIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -190,8 +190,44 @@ function UploadCard({
             onChange={(e) => read(e.target.files?.[0])}
           />
         </div>
+        <FileGuide kind={kind} />
       </CardContent>
     </Card>
+  )
+}
+
+const FILE_RULES = [
+  'The export straight from the email tool works as it is. No need to tidy it up first.',
+  'Only the first sheet of an Excel file is read. Move the emails there if they are on another tab.',
+  'The columns can be in any order, with any headings. The column with the most email addresses is used, so a "From" or "List" column is left out.',
+  'The simplest file is one column of email addresses, one per row, with or without an "Email" heading. A .txt file with one address per line works too.',
+  'Names around an address are dropped: "Ann Smith <ann@example.com>" is read as ann@example.com.',
+]
+
+// What the upload accepts, with an example file to start from.
+function FileGuide({ kind }: { kind: UploadKind }) {
+  async function downloadExample() {
+    const { downloadCsv } = await import('@/lib/spreadsheet')
+    downloadCsv(`Nyne CRM - ${KINDS[kind].label.toLowerCase()} example.csv`, ['Email'], [
+      ['ann.smith@example.com'],
+      ['j.perera@example.com'],
+      ['bookings@example.co.uk'],
+    ])
+  }
+  return (
+    <section className="grid gap-3 rounded-lg border bg-muted/30 p-4">
+      <h2 className="flex items-center gap-2 font-medium">
+        <InfoIcon className="size-4 text-muted-foreground" /> What files work
+      </h2>
+      <ul className="grid list-disc gap-1.5 pl-5 text-sm">
+        {FILE_RULES.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+      <Button type="button" variant="outline" size="sm" className="w-fit" onClick={downloadExample}>
+        <DownloadIcon /> Download an example file
+      </Button>
+    </section>
   )
 }
 

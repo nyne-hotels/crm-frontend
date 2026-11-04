@@ -87,6 +87,13 @@ export function todayIso(): string {
 // ---------- unsubscribe and bounce files ----------
 const EMAIL = /[^\s@<>()[\],;:"']+@[^\s@<>()[\],;:"']+\.[a-z]{2,}/i
 
+// A spreadsheet column's letters: 0 → A, 25 → Z, 26 → AA.
+function columnLetters(index: number): string {
+  let letters = ''
+  for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) letters = String.fromCharCode(65 + ((n - 1) % 26)) + letters
+  return letters
+}
+
 // The email addresses in a file from the email tool: the column with the most
 // of them (so a "from" or "list" address elsewhere is left out), with any
 // display name around them dropped ("Ann <ann@example.com>").
@@ -101,7 +108,7 @@ export function emailsFromGrid(grid: string[][]): { column: string | null; email
   if (best < 0) return { column: null, emails: [] }
   const heading = grid.find((row) => row[best])?.[best] ?? ''
   return {
-    column: heading && !EMAIL.test(heading) ? heading : `Column ${String.fromCharCode(65 + (best % 26))}`,
+    column: heading && !EMAIL.test(heading) ? heading : `Column ${columnLetters(best)}`,
     emails: grid.map((row) => (row[best] ?? '').match(EMAIL)?.[0]).filter((e): e is string => !!e),
   }
 }

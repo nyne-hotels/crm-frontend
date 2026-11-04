@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, DownloadIcon, ExternalLinkIcon, PencilIcon, TriangleAlertIcon } from 'lucide-react'
+import { ArrowLeftIcon, DownloadIcon, ExternalLinkIcon, InfoIcon, PencilIcon, TriangleAlertIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -12,18 +12,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { usePropertyOptions } from '@/hooks/use-reference-data'
+import { useCompanyOptions, useOccasionOptions, usePropertyOptions } from '@/hooks/use-reference-data'
 import { useImportHistory, useImportMutations, useImportSetup, type ImportRow } from '@/hooks/use-stays'
 import { errorMessage } from '@/lib/api'
 import { autoMatch, buildRows } from '@/lib/import-matching'
 import { formatCount, formatDate, formatDateTime, plural } from '@/lib/format'
-import { downloadCsv, readSpreadsheet, type SpreadsheetData } from '@/lib/spreadsheet'
+import { downloadCsv, downloadSheets, readSpreadsheet, type SpreadsheetData } from '@/lib/spreadsheet'
 import { STAY_STATUS_LABELS } from '@/lib/stays'
 import type { ImportFieldInfo, ImportOutcome, ImportPreview, ImportResult, ImportRowResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const ALL_HOTELS = '__all'
 const PREVIEW_PAGE = 100
+const MAX_ROWS = 5000 // the API's limit too
 const STEPS = ['Upload', 'Match columns', 'Preview', 'Result'] as const
 
 const OUTCOME_LABELS: Record<ImportOutcome, string> = {
@@ -173,7 +174,10 @@ function UploadStep({
   onLoaded: (file: LoadedFile) => void
   ready: boolean
 }) {
+  const { data: setup } = useImportSetup()
   const { data: hotels = [] } = usePropertyOptions()
+  const { data: occasions = [] } = useOccasionOptions()
+  const { data: companies = [] } = useCompanyOptions()
 
   return (
     <Card>
@@ -182,6 +186,19 @@ function UploadStep({
         <CardDescription>Export the bookings from the booking system as a spreadsheet. Nothing is saved until you click Import.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
+        <FileGuide />
+        <div>
+          <Button
+            variant="outline"
+            disabled={!setup}
+            onClick={() =>
+              setup &&
+              downloadSheets('Nyne CRM - booking import example.xlsx', exampleSheets(setup.fields, hotels, occasions, companies))
+            }
+          >
+            <DownloadIcon /> Download an example file
+          </Button>
+        </div>
         <Field label="Hotel" htmlFor="import-hotel" hint="Pick a hotel if the whole file is for one hotel and has no hotel column.">
           <Select value={propertyId ?? ALL_HOTELS} onValueChange={(v) => onPropertyChange(v === ALL_HOTELS ? null : v)}>
             <SelectTrigger id="import-hotel" className="w-full sm:w-72">
@@ -198,13 +215,188 @@ function UploadStep({
           </Select>
         </Field>
         <FileDrop
-          hint=".xlsx, .xls or .csv, up to 5,000 bookings"
+          hint={`.xlsx, .xls or .csv, up to ${formatCount(MAX_ROWS)} bookings`}
           disabled={!ready}
           onFile={async (file) => onLoaded({ name: file.name, data: await readSpreadsheet(file) })}
         />
       </CardContent>
     </Card>
   )
+}
+
+const FILE_NEEDS = [
+  'One row per booking, on the first sheet. Title lines above the headings are fine.',
+  'Every row needs a booking reference, an arrival date and a departure date, and a guest name, email or phone.',
+  'A hotel for every row: a Hotel column (the hotel name or its ID, e.g. P02), or pick the hotel above if the whole file is for one hotel.',
+  'The headings don’t have to match the example. In the next step you pair each column with a CRM field; common headings are paired for you, and the CRM remembers your choice for the next file.',
+  `Up to ${formatCount(MAX_ROWS)} bookings per file. Split a bigger export into several files.`,
+]
+
+const HOW_READ = [
+  'Dates: 21/10/2026, 2026-10-21, 21 Oct 2026 or Excel date cells. Numbers are read day first, as in Sri Lanka.',
+  'Room revenue needs a currency: a Currency column (USD, LKR …) or in the same cell, like “USD 450”.',
+  'Status: Confirmed, Checked in, Checked out, Cancelled or No show (and similar words). A status the CRM doesn’t know stops that row.',
+  'Phone numbers without a country code are read as from the guest’s country, else Sri Lanka.',
+  'Guests are found by email, then phone, never by name. Anyone not found becomes a new guest.',
+  'Importing the same booking reference for the same hotel again updates that stay instead of adding it twice.',
+]
+
+// "What the file needs" and "How values are read", above the file drop.
+function FileGuide() {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <section className="rounded-lg border bg-muted/30 p-4">
+        <h2 className="mb-2 flex items-center gap-2 font-medium">
+          <InfoIcon className="size-4 text-muted-foreground" /> What the file needs
+        </h2>
+        <ul className="grid list-disc gap-1.5 pl-5 text-sm">
+          {FILE_NEEDS.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ul>
+      </section>
+      <section className="rounded-lg border bg-muted/30 p-4">
+        <h2 className="mb-2 flex items-center gap-2 font-medium">
+          <InfoIcon className="size-4 text-muted-foreground" /> How values are read
+        </h2>
+        <ul className="grid list-disc gap-1.5 pl-5 text-sm">
+          {HOW_READ.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  )
+}
+
+// The example file: two made-up bookings under the CRM's own field names (so
+// step 2 pairs every column), a Columns tab saying what goes in each, and the
+// hotels, statuses, channels, occasions and agents the CRM knows. The first
+// booking fills every column; the second leaves the optional ones out and
+// shows other date, money and phone styles.
+const EXAMPLE_ROWS: Record<string, string>[] = [
+  {
+    bookingReference: 'RES-10482',
+    arrivalDate: '20/12/2026',
+    departureDate: '24/12/2026',
+    guestName: 'Mr John Smith',
+    email: 'john.smith@example.com',
+    phone: '+44 7911 123456',
+    country: 'United Kingdom',
+    adults: '2',
+    children: '1',
+    roomType: 'Deluxe Double',
+    roomRevenue: '850',
+    currency: 'USD',
+    channel: 'Travel agent',
+    status: 'Confirmed',
+    marketingConsent: 'Yes',
+    specialRequests: 'Late check-in',
+    bookedAt: '01/10/2026 14:20',
+  },
+  {
+    bookingReference: 'RES-10517',
+    arrivalDate: '2027-01-21',
+    departureDate: '2027-01-25',
+    guestName: 'Anjali Perera',
+    phone: '077 123 4567',
+    country: 'Sri Lanka',
+    adults: '2',
+    children: '0',
+    roomType: 'Garden Villa',
+    roomRevenue: 'LKR 120000',
+    channel: 'Website',
+    status: 'Confirmed',
+    bookedAt: '15 Oct 2026',
+  },
+]
+
+// What to write in each column, for the Columns tab. A field without an
+// entry here falls back to its hint from the API.
+const COLUMN_HELP: Record<string, string> = {
+  bookingReference: 'The reservation or confirmation number from the booking system. A booking imported again is found by it.',
+  hotel: 'The hotel’s name or ID, as on the Allowed values tab.',
+  arrivalDate: 'The check-in date: 20/12/2026, 2026-12-20 or 20 Dec 2026. Numbers are read day first.',
+  departureDate: 'The check-out date, written the same way. Not before the arrival.',
+  guestName: 'The guest’s full name. Titles (Mr, Mrs, Dr) are dropped; “Smith, John” works too.',
+  firstName: 'Instead of Guest name (full): the first name on its own.',
+  lastName: 'Instead of Guest name (full): the surname on its own.',
+  email: 'The guest’s email address. A guest already in the CRM is found by it.',
+  phone: 'With the country code (+44 7911 123456). Without one, it’s read as from the guest’s country, else Sri Lanka.',
+  country: 'Where the guest lives: the country name or its 2-letter code (United Kingdom, GB, UK).',
+  adults: 'The number of adults, e.g. 2.',
+  children: 'The number of children, 0 if none.',
+  roomType: 'The room as the booking system names it, e.g. Deluxe Double.',
+  roomRevenue: 'The amount for the stay, e.g. 850 or 1,250.50. The currency can be in the same cell: USD 850.',
+  currency: 'A 3-letter code: USD, EUR, GBP, LKR … Needed with the revenue, unless it is in the revenue cell.',
+  channel: 'How it was booked: Direct, Travel agent, OTA, Owner guest, Website or Walk-in. Other words are saved as unknown.',
+  agent: 'The travel agent, DMC or OTA, as named on the Allowed values tab. A name the CRM doesn’t have is left blank.',
+  occasion: 'Why they are staying, as on the Allowed values tab (e.g. Honeymoon). Others are left blank.',
+  status: 'Confirmed, Checked in, Checked out, Cancelled or No show. Empty means confirmed.',
+  marketingConsent: 'Yes if the guest ticked the marketing box: they are opted in to email. Empty or No changes nothing.',
+  specialRequests: 'Remarks for the stay, e.g. Late check-in. Importing the booking again replaces them.',
+  bookedAt: 'When the booking was made, with or without a time: 01/10/2026 14:20. Used as the date of a marketing opt-in.',
+}
+
+const GUEST_KEYS = ['guestName', 'firstName', 'lastName', 'email', 'phone']
+
+function exampleSheets(
+  fields: ImportFieldInfo[],
+  hotels: { id: string; name: string }[],
+  occasions: { name: string }[],
+  companies: { name: string; companyType: string }[],
+) {
+  // one name column is enough; First name / Last name are the alternative
+  const columns = fields.filter((f) => f.key !== 'firstName' && f.key !== 'lastName')
+  // the CRM's own names where it has them, so the example imports without warnings
+  const agent = companies.find((c) => c.companyType !== 'corporate' && c.companyType !== 'media') ?? companies[0]
+  const value = (row: Record<string, string>, i: number, key: string) => {
+    if (key === 'hotel') return hotels[i % Math.max(1, hotels.length)]?.name ?? 'Your hotel'
+    if (i === 0 && key === 'agent') return agent?.name ?? 'Example Travels'
+    if (i === 0 && key === 'occasion') return occasions[0]?.name ?? 'Honeymoon'
+    return row[key] ?? ''
+  }
+  const needed = (f: ImportFieldInfo) =>
+    f.required
+      ? 'Required'
+      : f.key === 'hotel'
+        ? 'Required, unless you pick the hotel when uploading'
+        : GUEST_KEYS.includes(f.key)
+          ? 'At least one of name, email or phone'
+          : 'Optional'
+  const example = (key: string) =>
+    key === 'firstName' ? 'John' : key === 'lastName' ? 'Smith' : value(EXAMPLE_ROWS[0], 0, key)
+
+  const lists: [string, string[]][] = [
+    ['Hotel', hotels.map((h) => h.name)],
+    ['Hotel ID', hotels.map((h) => h.id)],
+    ['Booking status', ['Confirmed', 'Checked in', 'Checked out', 'Cancelled', 'No show']],
+    ['Channel', ['Direct', 'Travel agent', 'OTA', 'Owner guest', 'Website', 'Walk-in']],
+    ['Marketing tick box', ['Yes', '(empty: no change)']],
+    ['Occasion', occasions.map((o) => o.name)],
+    ['Agent or OTA', companies.map((c) => c.name)],
+  ]
+  const longest = Math.max(...lists.map(([, values]) => values.length))
+  return [
+    {
+      name: 'Bookings',
+      headers: columns.map((f) => f.label),
+      rows: EXAMPLE_ROWS.map((row, i) => columns.map((f) => value(row, i, f.key))),
+      widths: columns.map((f) => Math.max(14, f.label.length + 2)),
+    },
+    {
+      name: 'Columns',
+      headers: ['Column', 'Needed?', 'What to write', 'Example'],
+      rows: fields.map((f) => [f.label, needed(f), COLUMN_HELP[f.key] ?? f.hint ?? '', example(f.key)]),
+      widths: [20, 30, 90, 24],
+    },
+    {
+      name: 'Allowed values',
+      headers: lists.map(([name]) => name),
+      rows: Array.from({ length: longest }, (_, i) => lists.map(([, values]) => values[i] ?? '')),
+      widths: [28, 10, 16, 14, 20, 20, 30],
+    },
+  ]
 }
 
 // =====================================================================

@@ -6,7 +6,8 @@ import type { Campaign } from '@/lib/types'
 // and in the leads' Campaign filter, so leads are refreshed too.
 const CAMPAIGNS = ['campaigns']
 
-export const useCampaigns = () => useQuery({ queryKey: CAMPAIGNS, queryFn: () => api<Campaign[]>('/campaigns') })
+export const useCampaigns = (enabled = true) =>
+  useQuery({ queryKey: CAMPAIGNS, queryFn: () => api<Campaign[]>('/campaigns'), enabled })
 
 export function useCampaignMutations() {
   const queryClient = useQueryClient()

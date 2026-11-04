@@ -50,12 +50,16 @@ export interface EmailListFilter extends Partial<Record<(typeof EMAIL_LIST_MORE_
   tagId?: string
 }
 
-export const useEmailList = (filter: EmailListFilter & { page?: number }) =>
+export const useEmailList = (filter: EmailListFilter & { page?: number; pageSize?: number }, enabled = true) =>
   useQuery({
     queryKey: [...EMAIL_LIST, filter],
-    queryFn: () => api<EmailList>(`/marketing/email-list${queryString({ ...filter, page: filter.page?.toString() })}`),
+    queryFn: () =>
+      api<EmailList>(
+        `/marketing/email-list${queryString({ ...filter, page: filter.page?.toString(), pageSize: filter.pageSize?.toString() })}`,
+      ),
     // keep showing the last results while the next ones load
     placeholderData: (previous) => previous,
+    enabled,
   })
 
 export const useExportHistory = () =>

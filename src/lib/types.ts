@@ -604,6 +604,51 @@ export interface MergeDetail {
   moved: Record<'emails' | 'phones' | 'stays' | 'notes' | 'preferences' | 'specialDates' | 'leads' | 'interactions', number>
 }
 
+// ---------- Settings → Deleted items ----------
+export type DeletedKind = 'guests' | 'stays' | 'companies'
+
+export interface DeletedGuestRow {
+  id: number
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  phone: string | null
+  stays: number
+  deleted: LastUpdated // who and when
+}
+
+export interface DeletedStayRow {
+  id: number
+  guest: { id: number; firstName: string | null; lastName: string | null; deleted: boolean }
+  hotel: string
+  arrivalDate: string | null
+  departureDate: string | null
+  bookingReference: string | null
+  status: StayStatus
+  deleted: LastUpdated
+}
+
+export interface DeletedCompanyRow {
+  id: number
+  name: string
+  companyType: CompanyType
+  deleted: LastUpdated
+}
+
+interface DeletedPage<K extends DeletedKind, R> {
+  kind: K
+  rows: R[]
+  total: number
+  page: number
+  pageSize: number
+  counts: Record<DeletedKind, number>
+}
+
+export type DeletedItems =
+  | DeletedPage<'guests', DeletedGuestRow>
+  | DeletedPage<'stays', DeletedStayRow>
+  | DeletedPage<'companies', DeletedCompanyRow>
+
 // ---------- sales: leads, conversations and companies (Module 7) ----------
 export interface StaffOption {
   id: number

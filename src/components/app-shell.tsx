@@ -4,8 +4,8 @@ import {
   Building2Icon,
   ChartColumnIcon,
   ChevronDownIcon,
-  HouseIcon,
   KeyRoundIcon,
+  LayoutDashboardIcon,
   LogOutIcon,
   MegaphoneIcon,
   MenuIcon,
@@ -45,7 +45,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { label: 'Home', to: '/', icon: HouseIcon, built: true },
+  { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon, built: true },
   // "Contacts": guests, leads, agent contacts and influencers. The URL and API stay /guests.
   { label: 'Contacts', to: '/guests', icon: UsersIcon, area: 'guests', built: true }, // Module 2
   { label: 'Stays', to: '/stays', icon: BedDoubleIcon, area: 'stays', built: true }, // Module 3

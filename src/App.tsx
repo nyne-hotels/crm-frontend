@@ -21,7 +21,7 @@ import { PossibleDuplicatesPage } from '@/pages/guests/duplicates/possible-dupli
 import { GuestProfilePage } from '@/pages/guests/guest-profile'
 import { GuestsPage } from '@/pages/guests/guests-list'
 import { UpcomingOccasionsPage } from '@/pages/guests/upcoming-occasions'
-import { HomePage } from '@/pages/home'
+import { DashboardPage } from '@/pages/dashboard'
 import { FollowUpsPage } from '@/pages/leads/follow-ups'
 import { LeadDetailPage } from '@/pages/leads/lead-detail'
 import { LeadsBoardPage } from '@/pages/leads/leads-board'
@@ -33,6 +33,7 @@ import { EmailUploadsPage } from '@/pages/marketing/email-uploads'
 import { MarketingLayout } from '@/pages/marketing/marketing-layout'
 import { ContactImportDetailPage } from '@/pages/settings/contact-imports/contact-import-detail'
 import { ContactImportHistoryPage } from '@/pages/settings/contact-imports/contact-import-history'
+import { DeletedItemsPage } from '@/pages/settings/deleted-items'
 import { HotelsPage } from '@/pages/settings/hotels'
 import { MergeDetailPage } from '@/pages/settings/merge-detail'
 import { MergeHistoryPage } from '@/pages/settings/merge-history'
@@ -95,7 +96,8 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <HomePage /> },
+      { index: true, element: <DashboardPage /> },
+      { path: 'dashboard', element: <Navigate to="/" replace /> },
       {
         path: 'guests',
         element: (
@@ -277,6 +279,7 @@ const router = createBrowserRouter([
           },
           { path: 'contact-imports/history', element: <ContactImportHistoryPage /> },
           { path: 'contact-imports/:id', element: <ContactImportDetailPage /> },
+          { path: 'deleted-items', element: <DeletedItemsPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },
