@@ -10,6 +10,7 @@ import {
   MegaphoneIcon,
   MenuIcon,
   MessageSquareHeartIcon,
+  SendIcon,
   SettingsIcon,
   TargetIcon,
   UsersIcon,
@@ -50,6 +51,7 @@ const NAV: NavItem[] = [
   { label: 'Contacts', to: '/guests', icon: UsersIcon, area: 'guests', built: true }, // Module 2
   { label: 'Stays', to: '/stays', icon: BedDoubleIcon, area: 'stays', built: true }, // Module 3
   { label: 'Marketing', to: '/marketing', icon: MegaphoneIcon, area: 'marketingExport', built: true }, // Module 5
+  { label: 'Campaigns', to: '/campaigns', icon: SendIcon, area: 'campaigns', built: true },
   { label: 'Leads', to: '/leads', icon: TargetIcon, area: 'leads', built: true }, // Module 7
   { label: 'Companies', to: '/companies', icon: Building2Icon, area: 'leads', built: true }, // Module 7: travel agents
   { label: 'Feedback', to: '/feedback', icon: MessageSquareHeartIcon, area: 'feedback', built: true }, // Module 8

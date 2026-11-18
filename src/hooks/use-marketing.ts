@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, queryString } from '@/lib/api'
 import { including, is, missing, neverStayed, set, type Clash } from '@/lib/filter-clashes'
-import type { EmailList, EmailListExport, ExportHistoryRow, UploadKind, UploadPreview, UploadResult } from '@/lib/types'
+import type { AudienceStatus, EmailList, EmailListExport, ExportHistoryRow } from '@/lib/types'
 
 // Marketing → Email list and Upload unsubscribes or bounces (Module 5).
 export const MARKETING = ['marketing']
@@ -77,20 +77,33 @@ export function useMarketingMutations() {
         }),
       onSuccess: () => queryClient.invalidateQueries({ queryKey: EXPORTS }),
     }),
-    previewUpload: useMutation({
-      mutationFn: (input: { kind: UploadKind; emails: string[] }) =>
-        api<UploadPreview>('/marketing/uploads/preview', { method: 'POST', body: input }),
-    }),
-    // opts guests out or marks emails bounced, so profiles and lists change too
-    upload: useMutation({
-      mutationFn: (input: { kind: UploadKind; emails: string[]; fileName: string }) =>
-        api<UploadResult>('/marketing/uploads', { method: 'POST', body: input }),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: MARKETING })
-        queryClient.invalidateQueries({ queryKey: ['consent'] })
-        queryClient.invalidateQueries({ queryKey: ['guests'] })
-        queryClient.invalidateQueries({ queryKey: ['knowledge', 'upcoming'] })
-      },
-    }),
   }
+}
+
+// ---------- Marketing → Unsubscribes & bounces (Mailchimp) ----------
+const AUDIENCE = [...MARKETING, 'mailchimp']
+
+export const useAudienceStatus = () =>
+  useQuery({ queryKey: AUDIENCE, queryFn: () => api<AudienceStatus>('/marketing/mailchimp') })
+
+// the webhook's address, with its secret: admins only
+export const useWebhookUrl = (enabled: boolean) =>
+  useQuery({
+    queryKey: [...AUDIENCE, 'webhook'],
+    queryFn: () => api<{ url: string | null; reachable: boolean }>('/marketing/mailchimp/webhook'),
+    enabled,
+  })
+
+// Check now: opts guests out or marks emails bounced, so profiles and lists change too
+export function useCheckAudience() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api<AudienceStatus>('/marketing/mailchimp/check', { method: 'POST' }),
+    onSuccess: (status) => queryClient.setQueryData(AUDIENCE, status),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: MARKETING })
+      queryClient.invalidateQueries({ queryKey: ['consent'] })
+      queryClient.invalidateQueries({ queryKey: ['guests'] })
+    },
+  })
 }

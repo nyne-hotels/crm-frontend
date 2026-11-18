@@ -17,6 +17,7 @@ import { ContactImportNote } from './contact-import-note'
 import { DoNotContactBanner } from './consent/do-not-contact'
 import { ContactDetailsPanel } from './contact-details-panel'
 import { StageChip, VipTag } from './guest-badges'
+import { GuestCampaignsPanel } from '../campaigns/guest-campaigns-panel'
 import { GuestFeedbackPanel } from '../feedback/feedback-panels'
 import { GuestLeadsPanel } from '../leads/guest-leads-panel'
 import { GuestStaysPanel } from '../stays/guest-stays-panel'
@@ -63,7 +64,7 @@ function GuestProfile({ id }: { id: number }) {
       <Link to="/guests" className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeftIcon className="size-4" /> Contacts
       </Link>
-      <ProfileHeader guest={guest} canEdit={canEdit} />
+      <ProfileHeader guest={guest} canEdit={canEdit} canOpenImports={can(me?.permissions, 'settings', 'edit')} />
       <MergedNote merges={guest.merges} canSeeHistory={can(me?.permissions, 'settings', 'edit')} />
       <DoNotContactBanner guestId={guest.id} guestName={guestTitle(guest)} />
 
@@ -91,6 +92,7 @@ function GuestProfile({ id }: { id: number }) {
             />
           )}
           {can(me?.permissions, 'feedback') && <GuestFeedbackPanel guestId={guest.id} />}
+          {can(me?.permissions, 'campaigns') && <GuestCampaignsPanel guestId={guest.id} />}
         </div>
       </div>
 
@@ -108,7 +110,57 @@ function GuestProfile({ id }: { id: number }) {
   )
 }
 
-function ProfileHeader({ guest, canEdit }: { guest: Guest; canEdit: boolean }) {
+// How they came to be in the CRM: "Added by contact import #12", "Added by
+// the Halloween 2026 form" … Admins can open a contact import.
+function AddedViaNote({ guest, canOpenImports }: { guest: Guest; canOpenImports: boolean }) {
+  const link = 'underline-offset-4 hover:text-foreground hover:underline'
+  const campaign = guest.addedViaCampaign && (
+    <Link to={`/campaigns/${guest.addedViaCampaign.id}`} className={link}>
+      {guest.addedViaCampaign.name}
+    </Link>
+  )
+  switch (guest.addedVia) {
+    case 'crm':
+      return <span>Added in the CRM</span>
+    case 'stay_import': {
+      const imported = guest.addedViaBookingImport
+      return <span>Added by a stay import{imported && ` (${imported.fileName}, ${formatDate(imported.at)})`}</span>
+    }
+    case 'contact_import': {
+      const label = `contact import #${guest.addedViaContactImportId}`
+      return (
+        <span>
+          Added by{' '}
+          {canOpenImports ? (
+            <Link to={`/settings/contact-imports/${guest.addedViaContactImportId}`} className={link}>
+              {label}
+            </Link>
+          ) : (
+            label
+          )}
+        </span>
+      )
+    }
+    case 'master_import':
+      return <span>Added from the master guest list</span>
+    case 'campaign_form':
+      return <span>Added by the {campaign} form</span>
+    case 'mailchimp':
+      return <span>Added from the {campaign} Mailchimp email</span>
+    case 'unknown':
+      return <span>How they were added isn't known</span>
+  }
+}
+
+function ProfileHeader({
+  guest,
+  canEdit,
+  canOpenImports,
+}: {
+  guest: Guest
+  canEdit: boolean
+  canOpenImports: boolean
+}) {
   const navigate = useNavigate()
   const { remove } = useGuestMutations()
   const [editing, setEditing] = useState(false)
@@ -131,6 +183,8 @@ function ProfileHeader({ guest, canEdit }: { guest: Guest; canEdit: boolean }) {
           <span>{guest.countryName ? `${countryFlag(guest.countryCode)} ${guest.countryName}` : 'Country not known'}</span>
           <span aria-hidden>·</span>
           <span>{MARKET_LABELS[guest.market]}</span>
+          <span aria-hidden>·</span>
+          <AddedViaNote guest={guest} canOpenImports={canOpenImports} />
           {(guest.designation || guest.companyName) && (
             <>
               <span aria-hidden>·</span>

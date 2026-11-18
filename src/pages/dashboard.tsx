@@ -376,7 +376,7 @@ function MarketingSection({ emailList, campaigns }: { emailList: boolean; campai
     <Section
       title="Marketing"
       icon={MegaphoneIcon}
-      to={emailList ? '/marketing/email-list' : '/marketing/campaigns'}
+      to={emailList ? '/marketing/email-list' : '/campaigns'}
       link={emailList ? 'Email list' : 'Campaigns'}
     >
       {emailList && (
@@ -389,7 +389,7 @@ function MarketingSection({ emailList, campaigns }: { emailList: boolean; campai
         <div className={cn(emailList && 'mt-4')}>
           <div className="mb-1 flex items-center text-sm text-muted-foreground">
             Open campaigns
-            <Link to="/marketing/campaigns" className="ml-auto hover:text-foreground">
+            <Link to="/campaigns" className="ml-auto hover:text-foreground">
               All campaigns
             </Link>
           </div>
@@ -399,7 +399,7 @@ function MarketingSection({ emailList, campaigns }: { emailList: boolean; campai
             <ul className="divide-y text-sm">
               {active.slice(0, LIST_LIMIT).map((c) => (
                 <li key={c.id} className="flex items-center gap-3 py-1.5">
-                  <Link to={`/leads?campaignId=${c.id}`} className="min-w-0 flex-1 truncate hover:underline">
+                  <Link to={`/campaigns/${c.id}`} className="min-w-0 flex-1 truncate hover:underline">
                     {c.name}
                   </Link>
                   <span className="text-muted-foreground tabular-nums">

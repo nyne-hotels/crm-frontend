@@ -27,9 +27,10 @@ import { LeadDetailPage } from '@/pages/leads/lead-detail'
 import { LeadsBoardPage } from '@/pages/leads/leads-board'
 import { LeadsLayout } from '@/pages/leads/leads-layout'
 import { LeadsListPage } from '@/pages/leads/leads-list'
-import { CampaignsPage } from '@/pages/marketing/campaigns'
+import { CampaignPage } from '@/pages/campaigns/campaign-page'
+import { CampaignsPage } from '@/pages/campaigns/campaigns-list'
 import { EmailListPage } from '@/pages/marketing/email-list'
-import { EmailUploadsPage } from '@/pages/marketing/email-uploads'
+import { UnsubscribesPage } from '@/pages/marketing/unsubscribes'
 import { MarketingLayout } from '@/pages/marketing/marketing-layout'
 import { ContactImportDetailPage } from '@/pages/settings/contact-imports/contact-import-detail'
 import { ContactImportHistoryPage } from '@/pages/settings/contact-imports/contact-import-history'
@@ -227,6 +228,20 @@ const router = createBrowserRouter([
         ],
       },
       {
+        path: 'campaigns',
+        element: (
+          <RequireAccess area="campaigns">
+            <Outlet />
+          </RequireAccess>
+        ),
+        children: [
+          { index: true, element: <CampaignsPage /> },
+          { path: ':id', element: <CampaignPage /> },
+        ],
+      },
+      // Campaigns were in Marketing until November 2026
+      { path: 'marketing/campaigns', element: <Navigate to="/campaigns" replace /> },
+      {
         path: 'marketing',
         element: (
           <RequireAccess area="marketingExport">
@@ -236,22 +251,9 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="email-list" replace /> },
           { path: 'email-list', element: <EmailListPage /> },
-          {
-            path: 'campaigns',
-            element: (
-              <RequireAccess area="campaigns">
-                <CampaignsPage />
-              </RequireAccess>
-            ),
-          },
-          {
-            path: 'uploads',
-            element: (
-              <RequireAccess area="guestConsent" access="edit">
-                <EmailUploadsPage />
-              </RequireAccess>
-            ),
-          },
+          { path: 'unsubscribes', element: <UnsubscribesPage /> },
+          // the upload page this replaced (November 2026)
+          { path: 'uploads', element: <Navigate to="/marketing/unsubscribes" replace /> },
         ],
       },
       {

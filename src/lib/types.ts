@@ -3,7 +3,7 @@ import type { ConsentChannel, ConsentSource, ConsentStatus, NotOnListReason } fr
 import type { ChangeField, ContactDecision, ContactRowGroup, ContactRowOutcome } from './contact-imports'
 import type { DuplicateReason } from './duplicates'
 import type { Department, FeedbackTab, Sentiment } from './feedback'
-import type { ContactMethodKind, ContactMethodStatus, ContactType, LifecycleStage, Market } from './guests'
+import type { AddedVia, ContactMethodKind, ContactMethodStatus, ContactType, LifecycleStage, Market } from './guests'
 import type { PreferenceCategory, PreferenceKind, SpecialDateOccasion } from './knowledge'
 import type {
   CompanyStatus,
@@ -101,12 +101,119 @@ export interface Campaign {
   slug: string // the form's address; made from the name once, kept on rename, can be changed by hand
   link: string
   isActive: boolean // false = closed: the form says the campaign has ended
+  mailchimpCampaignId: string | null // its email in Mailchimp, whose report the campaign page shows
   owner: { id: number; name: string; isActive: boolean } // isActive false = they've left
   leads: number
   open: number
   booked: number
   createdAt: string
   lastUpdated: LastUpdated
+}
+
+// ---------- campaign reports (Mailchimp) ----------
+// Every rate is a fraction (0.146 = 14.6%). Opens leave out Apple Mail's
+// automatic opens; the all-in figures are kept beside them.
+export interface EmailSummary {
+  id: string // the Mailchimp email
+  title: string | null
+  subject: string | null
+  sentAt: string | null
+  sent: number
+  openRate: number
+  clickRate: number
+  unsubscribed: number
+}
+
+// A sent Mailchimp email, to link a campaign to
+export interface MailchimpEmail {
+  id: string
+  title: string | null
+  subject: string | null
+  sentAt: string | null
+  sent: number
+  linkedTo: { id: number; name: string } | null
+}
+
+export interface CampaignReport {
+  fetchedAt: string
+  email: {
+    id: string
+    title: string | null
+    subject: string | null
+    previewText: string | null
+    fromName: string | null
+    replyTo: string | null
+    sentAt: string | null
+    audience: string | null
+    segment: string | null
+    webVersionUrl: string | null
+  }
+  sent: number
+  delivered: number
+  bounces: { hard: number; soft: number }
+  unsubscribed: number
+  spamReports: number
+  forwards: number
+  opens: { people: number; rate: number; allPeople: number; allRate: number; total: number; last: string | null }
+  clicks: { people: number; rate: number; total: number; last: string | null }
+  audienceAverage: { openRate: number | null; clickRate: number | null } | null
+  industryAverage: { name: string | null; openRate: number | null; clickRate: number | null } | null
+  hourly: { at: string; opens: number; allOpens: number; clicks: number }[]
+  links: { url: string; clicks: number; uniqueClicks: number; share: number; last: string | null }[]
+  countries: { code: string; name: string | null; opens: number; allOpens: number }[]
+  domains: { domain: string; sent: number; delivered: number; bounces: number; opens: number; clicks: number; unsubscribed: number }[]
+}
+
+// What the sync brought in from Mailchimp, and the bookings that followed
+export interface CampaignBookings {
+  stays: number
+  guests: number
+  revenue: { currency: string | null; amount: number }[] // per currency, largest first
+}
+
+export interface CampaignResults {
+  sync: { lastSyncedAt: string | null; lastError: string | null; lastErrorAt: string | null } | null
+  windowDays: number
+  recipients: { total: number; inCrm: number; added: number; sharedOnly: number } | null // null until the first sync
+  bookings: { fromClickers: CampaignBookings; fromRecipients: CampaignBookings } | null
+}
+
+export const PEOPLE_SHOW = ['all', 'opened', 'clicked', 'not_opened', 'unsubscribed', 'bounced', 'added', 'booked'] as const
+export type PeopleShow = (typeof PEOPLE_SHOW)[number]
+
+export interface CampaignPerson {
+  id: number
+  email: string
+  delivery: 'sent' | 'soft_bounce' | 'hard_bounce'
+  unsubscribedAt: string | null
+  unsubscribeReason: string | null
+  contact: { id: number; firstName: string | null; lastName: string | null; lifecycleStage: LifecycleStage; vipReason: string | null } | null
+  addedByThisEmail: boolean
+  opens: number // includes Apple Mail's automatic opens
+  lastOpen: string | null
+  clicks: number
+  lastClick: string | null
+  booked: boolean
+}
+
+export interface CampaignPeople {
+  rows: CampaignPerson[]
+  total: number
+  page: number
+  pageSize: number
+  counts: Record<PeopleShow, number> | null // null until the first sync
+}
+
+// A guest's campaign emails, for their profile
+export interface ContactCampaignEmail {
+  campaign: { id: number; name: string }
+  sentAt: string | null
+  delivery: 'sent' | 'soft_bounce' | 'hard_bounce'
+  unsubscribedAt: string | null
+  opens: number
+  lastOpen: string | null
+  clicks: number
+  links: string[]
 }
 
 export interface TagOption {
@@ -165,6 +272,11 @@ export interface Guest {
   designation: string | null // job title
   vipReason: string | null
   status: 'active' | 'do_not_contact'
+  // how they came to be in the CRM, and from which import or campaign
+  addedVia: AddedVia
+  addedViaContactImportId: number | null
+  addedViaBookingImport: { id: number; fileName: string; at: string } | null
+  addedViaCampaign: { id: number; name: string } | null
   emails: ContactMethod[] // primary first, then newest
   phones: ContactMethod[]
   summary: { hotels: string | null; stayCount: number; lastStay: string | null }
@@ -466,24 +578,33 @@ export interface ExportHistoryRow {
   exported: LastUpdated // who and when
 }
 
-export type UploadKind = 'unsubscribes' | 'bounces'
-
-export interface UploadPreview {
-  kind: UploadKind
-  total: number // distinct emails in the file
-  invalid: string[]
-  matched: { email: string; guests: { id: number; firstName: string | null; lastName: string | null; done: boolean }[] }[]
-  unmatched: string[]
-  changes: number // unsubscribes: guests to opt out; bounces: emails to mark bounced
-  unchanged: number // already opted out, or already bounced
+// Marketing → Unsubscribes & bounces: what Mailchimp has sent (its webhook and daily check)
+export interface AudienceEvent {
+  id: number
+  email: string
+  kind: 'unsubscribe' | 'cleaned'
+  at: string
+  reason: string | null
+  via: 'webhook' | 'check'
+  optedOut: number // guests opted out by it
+  bounced: number // email addresses marked bounced
+  leftOptedIn: number // guests left opted in: they opted in again in the CRM later
 }
 
-export interface UploadResult {
-  kind: UploadKind
-  updated: number
-  unchanged: number
-  unmatched: string[]
-  invalid: string[]
+export interface AudienceStatus {
+  configured: boolean // a Mailchimp key is set
+  webhook: { on: boolean } // MAILCHIMP_WEBHOOK_SECRET is set
+  audiences: {
+    listId: string
+    name: string | null
+    lastCheckedAt: string | null
+    lastError: string | null
+    lastErrorAt: string | null
+    lastWebhookAt: string | null
+  }[]
+  totals: { unsubscribes: number; cleaned: number; last30: number }
+  recent: AudienceEvent[] // newest 50
+  toCheck: { id: number; firstName: string | null; lastName: string | null; givenAt: string | null }[] // opted in again after unsubscribing
 }
 
 // ---------- duplicates and merging (Module 6) ----------

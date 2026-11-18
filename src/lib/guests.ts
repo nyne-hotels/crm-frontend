@@ -4,6 +4,27 @@
 export const CONTACT_TYPES = ['guest', 'lead', 'agent_contact', 'influencer'] as const
 export type ContactType = (typeof CONTACT_TYPES)[number]
 
+// How someone came to be in the CRM (contacts.added_via), set once when they're added.
+export const ADDED_VIA = [
+  'crm',
+  'stay_import',
+  'contact_import',
+  'master_import',
+  'campaign_form',
+  'mailchimp',
+  'unknown',
+] as const
+export type AddedVia = (typeof ADDED_VIA)[number]
+export const ADDED_VIA_LABELS: Record<AddedVia, string> = {
+  crm: 'Added in the CRM',
+  stay_import: 'Stay import',
+  contact_import: 'Contact import',
+  master_import: 'Master guest list',
+  campaign_form: 'Campaign form',
+  mailchimp: 'Mailchimp email',
+  unknown: 'Not known',
+}
+
 // The 'lead' type shows as Prospect (someone who hasn't stayed yet), so it isn't
 // mistaken for a lead on the Leads tab (one enquiry being followed up).
 export const CONTACT_TYPE_LABELS: Record<ContactType, string> = {

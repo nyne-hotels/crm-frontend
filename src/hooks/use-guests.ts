@@ -26,6 +26,7 @@ export const GUEST_MORE_FILTERS = [
   'lastStayTo',
   'addedFrom',
   'addedTo',
+  'addedVia',
   'upcomingStay',
   'openLead',
   'feedback',

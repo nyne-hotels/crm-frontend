@@ -1,17 +1,12 @@
 import { NavLink, Outlet } from 'react-router'
-import { useMe } from '@/hooks/use-me'
-import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 
-// Marketing → Email list, Campaigns, and Upload unsubscribes or bounces for those who record consent.
+// Marketing → Email list, and Unsubscribes & bounces (from Mailchimp, by
+// themselves). Campaigns have their own tab (/campaigns).
 export function MarketingLayout() {
-  const { data: me } = useMe()
   const tabs = [
     { label: 'Email list', to: '/marketing/email-list' },
-    ...(can(me?.permissions, 'campaigns') ? [{ label: 'Campaigns', to: '/marketing/campaigns' }] : []),
-    ...(can(me?.permissions, 'guestConsent', 'edit')
-      ? [{ label: 'Upload unsubscribes or bounces', to: '/marketing/uploads' }]
-      : []),
+    { label: 'Unsubscribes & bounces', to: '/marketing/unsubscribes' },
   ]
   return (
     <div className="mx-auto max-w-7xl">

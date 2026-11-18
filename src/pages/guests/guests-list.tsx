@@ -23,6 +23,8 @@ import { CONSENT_STATUS_LABELS, CONSENT_STATUSES } from '@/lib/consent'
 import { filterFields, listOf, optionsFrom, pickParams } from '@/lib/filters'
 import { countryFlag, formatCount, formatDate, fullName, plural } from '@/lib/format'
 import {
+  ADDED_VIA,
+  ADDED_VIA_LABELS,
   CONTACT_METHOD_STATUSES,
   CONTACT_TYPE_LABELS,
   CONTACT_TYPES,
@@ -403,6 +405,7 @@ function GuestMoreFilters({
           {...f.multi('birthdayMonth')}
         />
         <RangeFilter label="Added to the CRM" type="date" {...f.range('addedFrom', 'addedTo')} />
+        <FilterMultiSelect label="Added via" options={optionsFrom(ADDED_VIA, ADDED_VIA_LABELS)} {...f.multi('addedVia')} />
       </FilterGroup>
     </>
   )
