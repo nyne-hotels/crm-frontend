@@ -1,6 +1,6 @@
 import { CheckIcon, CopyIcon, ExternalLinkIcon, PencilIcon, PlusIcon, TriangleAlertIcon, XIcon } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { LastUpdated } from '@/components/last-updated'
 import { Button } from '@/components/ui/button'
@@ -149,7 +149,7 @@ function CampaignRow({ campaign, owners, canEdit }: { campaign: Campaign; owners
           ) : (
             <div className="flex flex-wrap items-center gap-x-2">
               <span className="font-medium">{campaign.name}</span>
-              {!campaign.isActive && <span className="text-xs">(closed)</span>}
+              {!campaign.isActive && <span className="text-xs">(archived)</span>}
               {canEdit && (
                 <Button
                   size="icon"
@@ -230,13 +230,18 @@ function CampaignRow({ campaign, owners, canEdit }: { campaign: Campaign; owners
         </div>
         {canEdit && (
           <label className="flex items-center gap-2 pt-1 text-sm">
-            <span className="hidden sm:inline">Open</span>
+            <span className="hidden sm:inline">Active</span>
             <Switch
               checked={campaign.isActive}
               onCheckedChange={(isActive) =>
-                save({ isActive }, isActive ? `${campaign.name} is open again` : `${campaign.name} closed; its form says it has ended`)
+                save(
+                  { isActive },
+                  isActive
+                    ? `${campaign.name} is active again; it's back in Active`
+                    : `${campaign.name} archived; its form says it has ended`,
+                )
               }
-              aria-label={`${campaign.name} open`}
+              aria-label={`${campaign.name} active`}
             />
           </label>
         )}
@@ -276,6 +281,10 @@ function CampaignRow({ campaign, owners, canEdit }: { campaign: Campaign; owners
   )
 }
 
+const SHOW_TABS = ['active', 'archived'] as const
+type Show = (typeof SHOW_TABS)[number]
+const SHOW_LABELS: Record<Show, string> = { active: 'Active', archived: 'Archived' }
+
 // Marketing → Campaigns: each campaign's email links to its form; every form
 // sent becomes a lead for the owner, due for follow-up the day it arrives.
 export function CampaignsPage() {
@@ -287,6 +296,14 @@ export function CampaignsPage() {
   const [newName, setNewName] = useState('')
   // the signed-in person when they can own leads, otherwise chosen
   const [ownerId, setOwnerId] = useState<string>('')
+  // Active or Archived (closed) campaigns, kept in the URL so a refresh stays on the tab
+  const [params, setParams] = useSearchParams()
+  const show: Show = params.get('show') === 'archived' ? 'archived' : 'active'
+  const counts = {
+    active: campaigns?.filter((c) => c.isActive).length,
+    archived: campaigns?.filter((c) => !c.isActive).length,
+  }
+  const shown = campaigns?.filter((c) => c.isActive === (show === 'active')) ?? []
   const owner = ownerId || (owners.some((o) => o.id === me?.id && o.isActive) ? String(me!.id) : '')
 
   async function add(e: FormEvent) {
@@ -297,10 +314,23 @@ export function CampaignsPage() {
     try {
       await create.mutateAsync({ name, ownerId: Number(owner) })
       setNewName('')
+      if (show !== 'active') selectTab('active') // new campaigns start active
       toast.success(`${name} added. Copy its link into the campaign email.`)
     } catch (err) {
       toast.error(errorMessage(err))
     }
+  }
+
+  function selectTab(tab: Show) {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (tab === 'active') next.delete('show')
+        else next.set('show', tab)
+        return next
+      },
+      { replace: true },
+    )
   }
 
   return (
@@ -308,7 +338,7 @@ export function CampaignsPage() {
       <p className="text-sm text-muted-foreground">
         Put a campaign's link on the button in its email. Each form sent becomes a lead on the Leads board for the
         campaign's owner, due for follow-up that day, and guests who tick the box are opted in to marketing emails.
-        Closing a campaign stops its form; renaming it keeps the same link. Changing the link breaks links already sent.
+        Switching a campaign off archives it and stops its form; renaming it keeps the same link. Changing the link breaks links already sent.
       </p>
       {canEdit && (
         <form onSubmit={add} className="flex flex-wrap gap-2">
@@ -327,13 +357,38 @@ export function CampaignsPage() {
         </form>
       )}
 
+      <div role="tablist" aria-label="Show" className="flex w-fit gap-1 rounded-lg bg-muted p-1">
+        {SHOW_TABS.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={show === tab}
+            onClick={() => selectTab(tab)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+              show === tab && 'bg-background text-foreground shadow-sm',
+            )}
+          >
+            {SHOW_LABELS[tab]}
+            {counts[tab] !== undefined && <span className="text-xs tabular-nums">{counts[tab]}</span>}
+          </button>
+        ))}
+      </div>
+
       {isPending || isError ? (
         <p className="py-8 text-center text-sm text-muted-foreground">{isError ? "Couldn't load campaigns." : 'Loading…'}</p>
-      ) : campaigns.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No campaigns yet.</p>
+      ) : shown.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          {campaigns.length === 0
+            ? 'No campaigns yet.'
+            : show === 'active'
+              ? 'No active campaigns. Switch one back on from Archived, or add a new one.'
+              : 'No archived campaigns. Switching a campaign off moves it here.'}
+        </p>
       ) : (
         <ul className="divide-y overflow-hidden rounded-md border">
-          {campaigns.map((c) => (
+          {shown.map((c) => (
             <CampaignRow key={c.id} campaign={c} owners={owners} canEdit={canEdit} />
           ))}
         </ul>
