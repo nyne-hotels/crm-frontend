@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ExternalLinkIcon, PencilIcon } from 'lucide-react'
+import { ExternalLinkIcon, PencilIcon, PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useProperties, useUpdateProperty } from '@/hooks/use-settings'
+import { useCreateProperty, useProperties, useUpdateProperty } from '@/hooks/use-settings'
 import { errorMessage } from '@/lib/api'
 import type { Property } from '@/lib/types'
 
@@ -23,22 +23,35 @@ const schema = z.object({
 })
 type Values = z.infer<typeof schema>
 
-function HotelDialog({ hotel, onOpenChange }: { hotel: Property | null; onOpenChange: (open: boolean) => void }) {
+// 'new' adds a hotel; a hotel edits it.
+type Editing = Property | 'new' | null
+
+function HotelDialog({ hotel, onOpenChange }: { hotel: Editing; onOpenChange: (open: boolean) => void }) {
+  const adding = hotel === 'new'
   return (
     <Dialog open={!!hotel} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit hotel</DialogTitle>
-          <DialogDescription>{hotel?.id}</DialogDescription>
+          <DialogTitle>{adding ? 'Add hotel' : 'Edit hotel'}</DialogTitle>
+          <DialogDescription>
+            {adding ? 'It gets the next ID and appears in every hotel drop-down.' : hotel?.id}
+          </DialogDescription>
         </DialogHeader>
-        {hotel && <HotelForm hotel={hotel} onClose={() => onOpenChange(false)} />}
+        {hotel && (
+          <HotelForm
+            key={adding ? 'new' : hotel.id}
+            hotel={adding ? undefined : hotel}
+            onClose={() => onOpenChange(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )
 }
 
-function HotelForm({ hotel, onClose }: { hotel: Property; onClose: () => void }) {
+function HotelForm({ hotel, onClose }: { hotel?: Property; onClose: () => void }) {
   const update = useUpdateProperty()
+  const create = useCreateProperty()
   const [error, setError] = useState<string | null>(null)
   const {
     register,
@@ -47,23 +60,28 @@ function HotelForm({ hotel, onClose }: { hotel: Property; onClose: () => void })
   } = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: hotel.name,
-      location: hotel.location ?? '',
-      propertyType: hotel.propertyType ?? '',
-      webUrl: hotel.webUrl ?? '',
+      name: hotel?.name ?? '',
+      location: hotel?.location ?? '',
+      propertyType: hotel?.propertyType ?? '',
+      webUrl: hotel?.webUrl ?? '',
     },
   })
 
   async function submit(values: Values) {
+    const input = {
+      name: values.name,
+      location: values.location || null,
+      propertyType: values.propertyType || null,
+      webUrl: values.webUrl || null,
+    }
     try {
-      await update.mutateAsync({
-        id: hotel.id,
-        name: values.name,
-        location: values.location || null,
-        propertyType: values.propertyType || null,
-        webUrl: values.webUrl || null,
-      })
-      toast.success('Hotel saved')
+      if (hotel) {
+        await update.mutateAsync({ id: hotel.id, ...input })
+        toast.success('Hotel saved')
+      } else {
+        const added = await create.mutateAsync(input)
+        toast.success(`${added.name} added as ${added.id}`)
+      }
       onClose()
     } catch (err) {
       setError(errorMessage(err))
@@ -75,7 +93,7 @@ function HotelForm({ hotel, onClose }: { hotel: Property; onClose: () => void })
         <form id="hotel-form" onSubmit={handleSubmit(submit)} className="grid gap-4" noValidate>
           <FormError message={error} />
           <Field label="Name" htmlFor="name" error={errors.name?.message}>
-            <Input id="name" {...register('name')} />
+            <Input id="name" autoFocus={!hotel} {...register('name')} />
           </Field>
           <Field label="Location" htmlFor="location" error={errors.location?.message}>
             <Input id="location" {...register('location')} />
@@ -86,14 +104,14 @@ function HotelForm({ hotel, onClose }: { hotel: Property; onClose: () => void })
           <Field label="Website" htmlFor="webUrl" error={errors.webUrl?.message}>
             <Input id="webUrl" type="url" placeholder="https://" {...register('webUrl')} />
           </Field>
-          <LastUpdated value={hotel.lastUpdated} />
+          {hotel && <LastUpdated value={hotel.lastUpdated} />}
         </form>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" form="hotel-form" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : 'Save'}
+            {isSubmitting ? 'Saving…' : hotel ? 'Save' : 'Add hotel'}
           </Button>
         </DialogFooter>
     </>
@@ -103,7 +121,7 @@ function HotelForm({ hotel, onClose }: { hotel: Property; onClose: () => void })
 export function HotelsPage() {
   const { data: hotels, isPending, isError } = useProperties()
   const update = useUpdateProperty()
-  const [editing, setEditing] = useState<Property | null>(null)
+  const [editing, setEditing] = useState<Editing>(null)
 
   async function toggle(hotel: Property, isActive: boolean) {
     try {
@@ -116,9 +134,14 @@ export function HotelsPage() {
 
   return (
     <div className="grid gap-2">
-      <p className="text-sm text-muted-foreground">
-        Switching a hotel off hides it from drop-downs. Its guests and stays are kept.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          Switching a hotel off hides it from drop-downs. Its guests and stays are kept.
+        </p>
+        <Button onClick={() => setEditing('new')}>
+          <PlusIcon /> Add hotel
+        </Button>
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>

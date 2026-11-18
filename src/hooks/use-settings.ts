@@ -64,6 +64,19 @@ const PROPERTIES = ['settings', 'properties']
 export const useProperties = () =>
   useQuery({ queryKey: PROPERTIES, queryFn: () => api<Property[]>('/settings/properties') })
 
+// A new hotel gets the next id (P12…) and shows in every hotel drop-down.
+export function useCreateProperty() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: Pick<Property, 'name' | 'location' | 'propertyType' | 'webUrl'>) =>
+      api<Property>('/settings/properties', { method: 'POST', body: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROPERTIES })
+      queryClient.invalidateQueries({ queryKey: ['reference', 'properties'] })
+    },
+  })
+}
+
 export function useUpdateProperty() {
   const queryClient = useQueryClient()
   return useMutation({
