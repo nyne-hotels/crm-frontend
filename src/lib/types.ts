@@ -102,6 +102,7 @@ export interface Campaign {
   link: string
   isActive: boolean // false = closed: the form says the campaign has ended
   mailchimpCampaignId: string | null // its email in Mailchimp, whose report the campaign page shows
+  notificationEmails: string[] // each receives a separate email when the campaign form is sent
   owner: { id: number; name: string; isActive: boolean } // isActive false = they've left
   leads: number
   open: number

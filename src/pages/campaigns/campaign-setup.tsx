@@ -158,10 +158,12 @@ export function CampaignHeader({ campaign, canEdit }: { campaign: Campaign; canE
   )
 }
 
-function SetupRow({ label, children }: { label: string; children: React.ReactNode }) {
+function SetupRow({ label, children, alignTop = false }: { label: string; children: React.ReactNode; alignTop?: boolean }) {
   return (
-    <div className="grid gap-1 px-4 py-3 sm:grid-cols-[10rem_1fr] sm:items-center sm:gap-4">
-      <span className="text-sm text-muted-foreground">{label}</span>
+    <div
+      className={`grid gap-1 px-4 py-3 sm:grid-cols-[10rem_1fr] sm:gap-4 ${alignTop ? 'sm:items-start' : 'sm:items-center'}`}
+    >
+      <span className={`text-sm text-muted-foreground ${alignTop ? 'sm:pt-2' : ''}`}>{label}</span>
       <div className="min-w-0">{children}</div>
     </div>
   )
@@ -184,6 +186,8 @@ export function CampaignSetup({
   const [editingLink, setEditingLink] = useState(false)
   const [slug, setSlug] = useState(campaign.slug)
   const [picking, setPicking] = useState(false)
+  const [notificationEmails, setNotificationEmails] = useState(campaign.notificationEmails)
+  const [notificationDraft, setNotificationDraft] = useState('')
   // the campaign site's address, in front of the slug
   const linkBase = campaign.link.slice(0, campaign.link.length - campaign.slug.length)
 
@@ -197,6 +201,41 @@ export function CampaignSetup({
     const trimmed = slug.trim().toLowerCase()
     if (!trimmed || trimmed === campaign.slug) return cancelLink()
     if (await save({ slug: trimmed }, 'Link changed. Use the new one in campaign emails.')) setEditingLink(false)
+  }
+
+  function emailsFromDraft() {
+    return notificationDraft
+      .split(/[\s,;]+/)
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean)
+  }
+
+  function addNotificationEmails() {
+    const entered = emailsFromDraft()
+    if (!entered.length) return true
+    const invalid = entered.find((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    if (invalid) {
+      toast.error(`${invalid} isn't a valid email address`)
+      return false
+    }
+    const next = [...new Set([...notificationEmails, ...entered])]
+    if (next.length > 50) {
+      toast.error('Use 50 notification emails or fewer')
+      return false
+    }
+    setNotificationEmails(next)
+    setNotificationDraft('')
+    return true
+  }
+
+  async function saveNotificationEmails() {
+    if (!addNotificationEmails()) return
+    const entered = emailsFromDraft()
+    const next = [...new Set([...notificationEmails, ...entered])]
+    if (await save({ notificationEmails: next }, next.length ? 'Lead notification emails saved' : 'Lead notifications turned off')) {
+      setNotificationEmails(next)
+      setNotificationDraft('')
+    }
   }
 
   return (
@@ -325,6 +364,60 @@ export function CampaignSetup({
               <TriangleAlertIcon className="size-4 shrink-0" />
               {campaign.owner.name} has left, but still gets this campaign's new leads. Choose another owner.
             </p>
+          )}
+        </div>
+      </SetupRow>
+
+      <SetupRow label="Lead email notifications" alignTop>
+        <div className="grid max-w-2xl gap-2">
+          {canEdit && (
+            <div className="flex flex-wrap gap-2">
+              <Input
+                type="email"
+                multiple
+                value={notificationDraft}
+                onChange={(event) => setNotificationDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    addNotificationEmails()
+                  }
+                }}
+                placeholder="name@example.com"
+                aria-label="Add notification email addresses"
+                className="h-8 min-w-56 flex-1"
+              />
+              <Button type="button" size="sm" variant="outline" onClick={addNotificationEmails} disabled={!notificationDraft.trim()}>
+                Add
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={saveNotificationEmails}
+                disabled={saving || (!notificationDraft.trim() && notificationEmails.join() === campaign.notificationEmails.join())}
+              >
+                Save
+              </Button>
+            </div>
+          )}
+          {notificationEmails.length > 0 && (
+            <div className="flex flex-wrap gap-1.5" aria-label="Notification email addresses">
+              {notificationEmails.map((email) => (
+                <span key={email} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs">
+                  {email}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => setNotificationEmails((current) => current.filter((value) => value !== email))}
+                      className="rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      aria-label={`Remove ${email}`}
+                    >
+                      <XIcon className="size-3" />
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       </SetupRow>

@@ -132,6 +132,7 @@ export type CampaignChanges = {
   ownerId?: number
   isActive?: boolean
   mailchimpCampaignId?: string | null
+  notificationEmails?: string[]
 }
 
 export function useCampaignMutations() {
