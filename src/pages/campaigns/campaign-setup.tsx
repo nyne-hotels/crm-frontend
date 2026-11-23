@@ -186,7 +186,10 @@ export function CampaignSetup({
   const [editingLink, setEditingLink] = useState(false)
   const [slug, setSlug] = useState(campaign.slug)
   const [picking, setPicking] = useState(false)
-  const [notificationEmails, setNotificationEmails] = useState(campaign.notificationEmails)
+  // Older API deployments do not include this field yet. Treat that as the
+  // intended default (notifications off) while frontend/backend deploys overlap.
+  const savedNotificationEmails = campaign.notificationEmails ?? []
+  const [notificationEmails, setNotificationEmails] = useState(savedNotificationEmails)
   const [notificationDraft, setNotificationDraft] = useState('')
   // the campaign site's address, in front of the slug
   const linkBase = campaign.link.slice(0, campaign.link.length - campaign.slug.length)
@@ -394,7 +397,7 @@ export function CampaignSetup({
                 type="button"
                 size="sm"
                 onClick={saveNotificationEmails}
-                disabled={saving || (!notificationDraft.trim() && notificationEmails.join() === campaign.notificationEmails.join())}
+                disabled={saving || (!notificationDraft.trim() && notificationEmails.join() === savedNotificationEmails.join())}
               >
                 Save
               </Button>
